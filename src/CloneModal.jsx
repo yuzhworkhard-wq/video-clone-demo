@@ -96,8 +96,8 @@ function StepIndicator({ steps, current }) {
 
 /* ── Step 1: Upload ── */
 function StepUpload({ onNext }) {
-  const [file, setFile] = useState({ name: 'demo-source.mp4', size: 2.8 * 1024 * 1024 });
-  const [videoUrl, setVideoUrl] = useState('demo.mp4');
+  const [file, setFile] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(null);
   const [form, setForm] = useState({
     sourceCategory: '网赚', sourceSubtype: '短剧推广',
     targetSubtype: '短剧推广', targetRegion: '巴西 (pt-BR)',
