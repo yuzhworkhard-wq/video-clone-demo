@@ -7,7 +7,7 @@ import {
   FileVideo, MapPin, Package, Type, Globe2,
   ImagePlus, Sparkles, Clock, Camera, MessageSquare,
   Eye, Pencil, CheckCircle2, Circle, ArrowLeft,
-  Dices, Send, AlertTriangle, Pause,
+  Dices, Send, AlertTriangle, Pause, Unlock, Languages, Film,
 } from 'lucide-react';
 
 const STEPS = [
@@ -21,6 +21,7 @@ export function CloneModal({ onClose }) {
   const [step, setStep] = useState(0);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
+  const [targetRegion, setTargetRegion] = useState('巴西 (pt-BR)');
 
   const startAnalyze = () => {
     setAnalyzing(true);
@@ -66,9 +67,9 @@ export function CloneModal({ onClose }) {
             </div>
           ) : (
             <>
-              {step === 0 && <StepUpload onNext={startAnalyze} />}
+              {step === 0 && <StepUpload onNext={startAnalyze} targetRegion={targetRegion} onTargetRegion={setTargetRegion} />}
               {step === 1 && <StepAssets onNext={() => setStep(2)} onBack={() => setStep(0)} />}
-              {step === 2 && <StepStoryboard onNext={() => setStep(3)} onBack={() => setStep(1)} />}
+              {step === 2 && <StepStoryboard onNext={() => setStep(3)} onBack={() => setStep(1)} targetRegion={targetRegion} />}
               {step === 3 && <StepGenerate onBack={() => setStep(2)} onClose={onClose} />}
             </>
           )}
@@ -95,12 +96,12 @@ function StepIndicator({ steps, current }) {
 }
 
 /* ── Step 1: Upload ── */
-function StepUpload({ onNext }) {
+function StepUpload({ onNext, targetRegion, onTargetRegion }) {
   const [file, setFile] = useState(null);
   const [videoUrl, setVideoUrl] = useState(null);
   const [form, setForm] = useState({
     sourceCategory: '网赚', sourceSubtype: '短剧推广',
-    targetSubtype: '短剧推广', targetRegion: '巴西 (pt-BR)',
+    targetSubtype: '短剧推广',
     logo: null, productName: 'ReelCash', extra: '',
     aspectRatio: '9:16',
   });
@@ -108,7 +109,7 @@ function StepUpload({ onNext }) {
   const logoRef = useRef();
 
   const canProceed = file && form.sourceCategory && form.sourceSubtype
-    && form.targetSubtype && form.targetRegion;
+    && form.targetSubtype && targetRegion;
 
   const handleFile = (f) => {
     if (!f) return;
@@ -191,8 +192,8 @@ function StepUpload({ onNext }) {
               </div>
               <div className="form-field">
                 <label>目标地区 <span className="required">*</span></label>
-                <input placeholder="如：pt-BR 巴西、es-MX 墨西哥" value={form.targetRegion}
-                  onChange={e => setForm({ ...form, targetRegion: e.target.value })} />
+                <input placeholder="如：pt-BR 巴西、es-MX 墨西哥" value={targetRegion}
+                  onChange={e => onTargetRegion(e.target.value)} />
               </div>
             </div>
             <div className="form-field">
@@ -476,7 +477,81 @@ function formatMs(ms) {
   return `${m}:${String(sec).padStart(2, '0')}.${frac}`;
 }
 
-function StepStoryboard({ onNext, onBack }) {
+function parseLangLabel(region) {
+  if (!region) return '本地语言';
+  const m = region.match(/\(([^)]+)\)/);
+  return m ? m[1] : region.trim();
+}
+
+// Demo 用的轻量「中文→本地语言(pt-BR)」短语匹配表：覆盖脚本常用词，
+// 命中优先长短语，未命中的字保持原样（真实产品此处应接翻译/改写模型）。
+const ZH_LOCAL_DICT = [
+  ['你知道你可以赚钱吗', 'Você sabia que pode ganhar dinheiro'],
+  ['看一集可以获得', 'Assista um episódio e ganhe'],
+  ['看两集获得', 'Assista dois episódios e ganhe'],
+  ['你看我赚了多少', 'Olha só quanto eu já ganhei'],
+  ['现在就下载App', 'Baixe o app agora'],
+  ['现在下载App', 'Baixe o app agora'],
+  ['今天就开始赚', 'comece a lucrar hoje'],
+  ['开始赚钱', 'comece a ganhar'],
+  ['直接到账', 'direto na conta'],
+  ['直接收到', 'Recebi direto'],
+  ['直接拿', 'receba direto'],
+  ['快下载', 'Corre, baixe agora'],
+  ['快去吧', 'Corre lá'],
+  ['你知道', 'Você sabia'],
+  ['你可以', 'você pode'],
+  ['你看', 'Olha só'],
+  ['赚钱', 'ganhar dinheiro'],
+  ['赚了', 'ganhei'],
+  ['看一集', 'assista um episódio'],
+  ['看一章', 'veja um capítulo'],
+  ['看两集', 'assista dois episódios'],
+  ['看两章', 'veja dois capítulos'],
+  ['两集', 'dois episódios'],
+  ['每集', 'cada episódio'],
+  ['价值', 'vale'],
+  ['获得', 'ganhe'],
+  ['到账', 'na conta'],
+  ['到手', 'na conta'],
+  ['收到', 'recebi'],
+  ['下载App', 'baixe o app'],
+  ['安装App', 'instale o app'],
+  ['下载', 'baixe'],
+  ['安装', 'instale'],
+  ['开始', 'comece'],
+  ['现在', 'agora'],
+  ['马上', 'na hora'],
+  ['直接', 'direto'],
+  ['可以', 'pode'],
+  ['App', 'o app'],
+  ['拿', 'receba'],
+  ['赚', 'ganhe'],
+  ['快', 'Corre'],
+];
+
+function zhToLocal(zh) {
+  if (!zh || !zh.trim()) return '';
+  let out = zh;
+  out = out.replace(/(\d+)\s*雷亚尔/g, 'R$$$1');   // 2雷亚尔 → R$2
+  out = out.replace(/雷亚尔/g, ' reais');
+  const entries = [...ZH_LOCAL_DICT].sort((a, b) => b[0].length - a[0].length);
+  for (const [k, v] of entries) {
+    if (out.includes(k)) out = out.split(k).join(' ' + v + ' ');
+  }
+  out = out
+    .replace(/，/g, ', ').replace(/。/g, '. ')
+    .replace(/！/g, '!').replace(/？/g, '?')
+    .replace(/、/g, ', ').replace(/…/g, '...')
+    .replace(/：/g, ': ');
+  out = out.replace(/\s+([,.!?:])/g, '$1');
+  out = out.replace(/\s+/g, ' ').trim();
+  if (out) out = out.charAt(0).toUpperCase() + out.slice(1);
+  return out;
+}
+
+function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
+  const langLabel = parseLangLabel(targetRegion);
   const initShots = [
     { id: 1, time: '0:00-0:02', startMs: 0, endMs: 2000, kfMs: 0, angle: '中景 / 正面平角', content: '角色在街边ATM旁说话', line: 'Voce sabia que pode ganhar...', zh: '你知道你可以赚钱吗...', type: 'frozen', keyframe: true, refVersion: 1,
       refDesc: '角色 IP + 街头ATM场景，中景正面', frameImg: 'frames/frame_01.jpg' },
@@ -504,9 +579,14 @@ function StepStoryboard({ onNext, onBack }) {
 
   const [shots, setShots] = useState(initShots);
   const [expandedId, setExpandedId] = useState(null);
-  const [selectedRewrite, setSelectedRewrite] = useState({});
+  const [edited, setEdited] = useState({});        // id -> { zh, local } 台词编辑结果
+  const [unlocked, setUnlocked] = useState({});    // id -> 冻结台词是否已解锁
+  const [matching, setMatching] = useState({});    // id -> 是否正在匹配本地语言
   const [refLoading, setRefLoading] = useState({});
+  const [regenPrompt, setRegenPrompt] = useState({}); // id -> 重新生成的补充要求
+  const [editedContent, setEditedContent] = useState({}); // id -> 用户改写的画面描述
   const scrubDebounce = useRef({});
+  const matchDebounce = useRef({});
 
   const keyframeCount = shots.filter(s => s.keyframe).length;
   const maxKeyframes = 9;
@@ -545,6 +625,43 @@ function StepStoryboard({ onNext, onBack }) {
     setExpandedId(expandedId === id ? null : id);
   };
 
+  // 输入中文，防抖后自动匹配目标语言展示
+  const applyZh = (id, zhVal) => {
+    setEdited(prev => ({ ...prev, [id]: { zh: zhVal, local: prev[id]?.local ?? '' } }));
+    setMatching(m => ({ ...m, [id]: true }));
+    clearTimeout(matchDebounce.current[id]);
+    matchDebounce.current[id] = setTimeout(() => {
+      const local = zhToLocal(zhVal);
+      setEdited(prev => ({ ...prev, [id]: { zh: zhVal, local } }));
+      setMatching(m => ({ ...m, [id]: false }));
+    }, 450);
+  };
+
+  // 选中一条重写方案：直接给定中文 + 本地语言，取消匹配中状态
+  const pickRewrite = (id, zhVal, localVal) => {
+    clearTimeout(matchDebounce.current[id]);
+    setMatching(m => ({ ...m, [id]: false }));
+    setEdited(prev => ({ ...prev, [id]: { zh: zhVal, local: localVal } }));
+  };
+
+  // 冻结台词解锁编辑；锁回则还原 AI 的原始冻结台词
+  const unlockFrozen = (id, s) => {
+    setUnlocked(u => ({ ...u, [id]: true }));
+    setEdited(prev => prev[id] ? prev : { ...prev, [id]: { zh: s.zh, local: s.line } });
+  };
+  const relockFrozen = (id) => {
+    setUnlocked(u => ({ ...u, [id]: false }));
+    setMatching(m => ({ ...m, [id]: false }));
+    setEdited(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  // 画面描述可编辑：AI 拆解不准时用户自己写（支持长文本 / 换行）
+  const applyContent = (id, val) => setEditedContent(prev => ({ ...prev, [id]: val }));
+
   return (
     <div className="step-content">
       <div className="storyboard-header">
@@ -558,35 +675,44 @@ function StepStoryboard({ onNext, onBack }) {
         {shots.map(s => {
           const isExpanded = expandedId === s.id;
           const isLoading = refLoading[s.id];
+          const eff = edited[s.id];
+          const effLocal = eff?.local ?? s.line;
+          const effZh = eff?.zh ?? s.zh;
+          const isChanged = !!eff && (eff.local !== s.line || eff.zh !== s.zh);
+          const isUnlocked = !!unlocked[s.id];
+          const isMatching = !!matching[s.id];
+          const effContent = editedContent[s.id] ?? s.content;
           return (
             <div key={s.id} className={`shot-card ${s.money ? 'shot-card--money' : ''} ${isExpanded ? 'shot-card--expanded' : ''}`}>
               <div className="shot-card-row" onClick={() => toggleExpand(s.id)}>
                 <div className="shot-card-col">
-                  <div className={`shot-ref-thumb ${s.keyframe ? '' : 'shot-ref-thumb--empty'} ${isLoading ? 'shot-ref-thumb--loading' : ''}`}>
-                    {s.keyframe && s.frameImg ? (
+                  <div className={`shot-ref-thumb ${s.keyframe ? '' : 'shot-ref-thumb--plain'} ${isLoading ? 'shot-ref-thumb--loading' : ''}`}>
+                    {s.frameImg ? (
                       <img src={s.frameImg} alt="" className="shot-ref-img" />
-                    ) : s.keyframe ? (
-                      isLoading ? <Loader2 size={14} className="spinner" /> : <Sparkles size={14} strokeWidth={1} />
-                    ) : null}
-                    {isLoading && s.keyframe && s.frameImg && <div className="shot-ref-loading"><Loader2 size={14} className="spinner" /></div>}
+                    ) : (
+                      isLoading ? <Loader2 size={16} className="spinner" /> : <Camera size={18} strokeWidth={1.2} />
+                    )}
+                    {s.keyframe && <span className="shot-ref-kf" title="关键帧"><Image size={10} /></span>}
+                    {isLoading && s.frameImg && <div className="shot-ref-loading"><Loader2 size={16} className="spinner" /></div>}
                   </div>
                 </div>
                 <div className="shot-card-col">
                   <div className="shot-card-time">{s.time}</div>
                   <div className="shot-card-meta">
-                    <div className="shot-card-content">{s.content}</div>
+                    <div className="shot-card-content">{effContent}</div>
                     <div className="shot-card-angle">{s.angle}</div>
                   </div>
                 </div>
                 <div className="shot-card-col">
                   <div className="shot-card-line">
-                    <span className={s.type === 'rewrite' ? 'rewrite-text' : 'frozen-text'}>
-                      {selectedRewrite[s.id] || s.line}
+                    <span className={(s.type === 'rewrite' || isChanged) ? 'rewrite-text' : 'frozen-text'}>
+                      {effLocal}
                     </span>
-                    <span className="shot-card-zh">{s.zh}</span>
+                    <span className="shot-card-zh">{effZh}</span>
                   </div>
                 </div>
                 <div className="shot-card-col shot-card-col--actions">
+                  {isChanged && <span className="edited-pill">已改台词</span>}
                   <button className="toggle-btn" onClick={e => { e.stopPropagation(); toggleKeyframe(s.id); }}
                     disabled={!s.keyframe && keyframeCount >= maxKeyframes}
                     title={s.keyframe ? '关闭关键帧' : '开启关键帧'}>
@@ -601,7 +727,21 @@ function StepStoryboard({ onNext, onBack }) {
               {isExpanded && (
                 <div className="shot-expand">
                   <div className="shot-expand-sections">
-                    {/* Reference image section */}
+                    {/* 画面：AI 拆解描述，可编辑（支持长文本 / 换行） */}
+                    <div className="shot-expand-scene">
+                      <div className="shot-expand-label">
+                        <Film size={13} />
+                        <span>画面</span>
+                        <span className="scene-sub">AI 拆解描述，拆得不准可自行修改</span>
+                      </div>
+                      <textarea className="scene-input" rows={2}
+                        value={effContent}
+                        placeholder="描述这一镜的画面，例如：宝妈一只手抱着一岁大的孩子，另一只手举着手机，表情热情真诚"
+                        onClick={e => e.stopPropagation()}
+                        onChange={e => applyContent(s.id, e.target.value)} />
+                    </div>
+
+                    {/* 参考图：放大双图对比 + 右侧控制列（帧定位 / 元信息 / 重新生成） */}
                     <div className="shot-expand-ref">
                       <div className="shot-expand-label">
                         <Image size={13} />
@@ -611,20 +751,34 @@ function StepStoryboard({ onNext, onBack }) {
                         </span>
                       </div>
                       {s.keyframe ? (
-                        <>
-                          {/* Frame scrubber with inline preview */}
-                          <div className="kf-scrubber-with-preview">
-                            <div className="kf-frame-preview">
-                              {s.frameImg ? (
-                                <img src={s.frameImg} alt="" className="kf-frame-img" />
-                              ) : (
-                                <Camera size={20} strokeWidth={1} />
-                              )}
-                              <div className="kf-frame-text-overlay">
-                                <span className="kf-frame-label">@ {formatMs(s.kfMs)}</span>
-                                <span className="kf-frame-desc">{s.angle}</span>
+                        <div className="ref-editor">
+                          <div className="ref-editor-images">
+                            <div className="ref-compare-col ref-compare-col--lg">
+                              <span className="compare-label">原帧 @ {formatMs(s.kfMs)}</span>
+                              <div className="ref-thumb">
+                                {s.frameImg ? (
+                                  <img src={s.frameImg} alt="" className="ref-thumb-img" />
+                                ) : (
+                                  <><Camera size={26} strokeWidth={1} /><span className="ref-thumb-text">{s.angle}</span></>
+                                )}
                               </div>
                             </div>
+                            <ChevronRight size={18} className="compare-arrow" />
+                            <div className="ref-compare-col ref-compare-col--lg">
+                              <span className="compare-label">合成参考图 {isLoading ? '' : `V${s.refVersion}`}</span>
+                              <div className={`ref-thumb ref-thumb--new ${isLoading ? 'ref-thumb--loading' : ''}`}>
+                                {isLoading ? (
+                                  <><Loader2 size={22} className="spinner" /><span className="ref-thumb-text">生成中...</span></>
+                                ) : s.frameImg ? (
+                                  <><img src={s.frameImg} alt="" className="ref-thumb-img ref-thumb-img--synth" /><span className="ref-thumb-overlay">{s.refDesc}</span></>
+                                ) : (
+                                  <><Sparkles size={26} strokeWidth={1} /><span className="ref-thumb-text">{s.refDesc}</span></>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="ref-editor-controls">
                             <div className="kf-scrubber">
                               <div className="kf-scrubber-label">
                                 <Clock size={12} />
@@ -651,65 +805,26 @@ function StepStoryboard({ onNext, onBack }) {
                               </div>
                               <p className="kf-scrubber-hint">拖动滑块定位关键帧，松手后自动刷新参考图</p>
                             </div>
-                          </div>
 
-                          <div className="ref-compare">
-                            <div className="ref-compare-images">
-                              <div className="ref-compare-col">
-                                <span className="compare-label">原帧 @ {formatMs(s.kfMs)}</span>
-                                <div className="ref-thumb">
-                                  {s.frameImg ? (
-                                    <img src={s.frameImg} alt="" className="ref-thumb-img" />
-                                  ) : (
-                                    <><Camera size={24} strokeWidth={1} /><span className="ref-thumb-text">{s.angle}</span></>
-                                  )}
-                                </div>
-                              </div>
-                              <ChevronRight size={16} className="compare-arrow" />
-                              <div className="ref-compare-col">
-                                <span className="compare-label">合成参考图 {isLoading ? '' : `V${s.refVersion}`}</span>
-                                <div className={`ref-thumb ref-thumb--new ${isLoading ? 'ref-thumb--loading' : ''}`}>
-                                  {isLoading ? (
-                                    <><Loader2 size={20} className="spinner" /><span className="ref-thumb-text">生成中...</span></>
-                                  ) : s.frameImg ? (
-                                    <><img src={s.frameImg} alt="" className="ref-thumb-img ref-thumb-img--synth" /><span className="ref-thumb-overlay">{s.refDesc}</span></>
-                                  ) : (
-                                    <><Sparkles size={24} strokeWidth={1} /><span className="ref-thumb-text">{s.refDesc}</span></>
-                                  )}
-                                </div>
-                              </div>
+                            <div className="ref-meta-compact">
+                              <span className="ref-meta-item"><span className="ref-meta-k">镜头</span>{s.angle}</span>
+                              <span className="ref-meta-item ref-meta-item--desc"><span className="ref-meta-k">描述</span>{s.refDesc}</span>
                             </div>
-                            <div className="ref-compare-info">
-                              <div className="ref-info-card">
-                                <div className="ref-info-row">
-                                  <span className="ref-info-label">镜头</span>
-                                  <span className="ref-info-value">{s.angle}</span>
-                                </div>
-                                <div className="ref-info-row">
-                                  <span className="ref-info-label">画面</span>
-                                  <span className="ref-info-value">{s.content}</span>
-                                </div>
-                                <div className="ref-info-row">
-                                  <span className="ref-info-label">时间段</span>
-                                  <span className="ref-info-value">{s.time}</span>
-                                </div>
-                                <div className="ref-info-row">
-                                  <span className="ref-info-label">关键帧</span>
-                                  <span className="ref-info-value">@ {formatMs(s.kfMs)}</span>
-                                </div>
-                                <div className="ref-info-row">
-                                  <span className="ref-info-label">生成描述</span>
-                                  <span className="ref-info-value ref-info-desc">{s.refDesc}</span>
-                                </div>
-                                <div className="ref-info-row">
-                                  <span className="ref-info-label">版本</span>
-                                  <span className="ref-info-value">V{s.refVersion}</span>
-                                </div>
+
+                            <div className="ref-regen">
+                              <div className="ref-regen-label"><Sparkles size={12} /> 补充生成要求（可选）</div>
+                              <div className="ref-regen-row">
+                                <input className="ref-regen-input"
+                                  placeholder="如：手机屏幕更亮、换成白天、人物靠近镜头"
+                                  value={regenPrompt[s.id] || ''}
+                                  onChange={e => setRegenPrompt(p => ({ ...p, [s.id]: e.target.value }))}
+                                  onClick={e => e.stopPropagation()}
+                                  disabled={isLoading} />
+                                <button className="btn-primary btn-sm" onClick={() => regenerateRef(s.id)} disabled={isLoading}>
+                                  <RefreshCw size={13} /> 重新生成
+                                </button>
                               </div>
                               <div className="ref-actions">
-                                <button className="btn-outline btn-sm" onClick={() => regenerateRef(s.id)} disabled={isLoading}>
-                                  <RefreshCw size={13} /> 重新生成参考图
-                                </button>
                                 <button className="btn-outline btn-sm" disabled={isLoading}>
                                   <Upload size={13} /> 上传替代
                                 </button>
@@ -719,7 +834,7 @@ function StepStoryboard({ onNext, onBack }) {
                               </div>
                             </div>
                           </div>
-                        </>
+                        </div>
                       ) : (
                         <div className="ref-off-hint">
                           <p>该镜头未设为关键帧，生成时靠 prompt 文字描述 + 相邻参考图自然过渡</p>
@@ -733,46 +848,95 @@ function StepStoryboard({ onNext, onBack }) {
                       )}
                     </div>
 
-                    {/* Script edit section */}
+                    {/* 台词：冻结可解锁修改 + 输入中文实时匹配本地语言 */}
                     <div className="shot-expand-script">
                       <div className="shot-expand-label">
                         <MessageSquare size={13} />
                         <span>台词</span>
+                        {s.type === 'frozen' ? (
+                          <span className={`kf-status ${isUnlocked ? 'kf-on' : 'kf-off'}`}>
+                            {isUnlocked ? '已解锁' : '冻结'}
+                          </span>
+                        ) : (
+                          <span className="kf-status kf-on">可改写</span>
+                        )}
                       </div>
-                      {s.type === 'frozen' ? (
+
+                      {s.type === 'frozen' && (
+                        <div className={`script-lock-bar ${isUnlocked ? 'is-unlocked' : ''}`}>
+                          <div className="script-lock-info">
+                            {isUnlocked ? <Unlock size={13} /> : <Lock size={13} />}
+                            <span>{isUnlocked
+                              ? '已解锁，可手动修改（将脱离原口型对齐，请谨慎）'
+                              : 'AI 判定为冻结台词，与原音轨 / 口型对齐'}</span>
+                          </div>
+                          <button className="lock-toggle-btn"
+                            onClick={e => { e.stopPropagation(); isUnlocked ? relockFrozen(s.id) : unlockFrozen(s.id, s); }}>
+                            {isUnlocked
+                              ? <ToggleRight size={20} className="toggle-on" />
+                              : <ToggleLeft size={20} className="toggle-off" />}
+                            <span>允许修改</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {(s.type === 'frozen' && !isUnlocked) ? (
                         <div className="script-frozen">
-                          <Lock size={12} />
-                          <span>冻结台词，不可编辑</span>
                           <p className="script-frozen-text">{s.line}</p>
                           <p className="script-zh-text">{s.zh}</p>
                         </div>
                       ) : (
-                        <div className="script-rewrite">
-                          <div className="script-original-row">
-                            <span className="rewrite-label">原台词：</span>
-                            <span className="script-original-line">{s.line}</span>
-                            <span className="script-original-zh">{s.zh}</span>
-                          </div>
-                          <span className="rewrite-label">选择重写方案：</span>
-                          <div className="rewrite-options">
-                            {s.rewrites.map((rw, ri) => (
-                              <label key={ri} className="rewrite-option">
-                                <input type="radio" name={`rw-${s.id}`}
-                                  checked={selectedRewrite[s.id] === rw}
-                                  onChange={() => setSelectedRewrite({ ...selectedRewrite, [s.id]: rw })} />
-                                <div className="rewrite-option-text">
-                                  <span>{rw}</span>
-                                  <span className="rewrite-option-zh">{s.rewritesZh?.[ri] || ''}</span>
-                                </div>
+                        <div className="script-edit">
+                          {s.type === 'rewrite' && (
+                            <>
+                              <div className="script-original-row">
+                                <span className="rewrite-label">原台词</span>
+                                <span className="script-original-line">{s.line}</span>
+                                <span className="script-original-zh">{s.zh}</span>
+                              </div>
+                              <span className="rewrite-label">选择重写方案：</span>
+                              <div className="rewrite-options">
+                                {s.rewrites.map((rw, ri) => (
+                                  <label key={ri} className="rewrite-option">
+                                    <input type="radio" name={`rw-${s.id}`}
+                                      checked={effLocal === rw}
+                                      onChange={() => pickRewrite(s.id, s.rewritesZh?.[ri] || effZh, rw)} />
+                                    <div className="rewrite-option-text">
+                                      <span>{rw}</span>
+                                      <span className="rewrite-option-zh">{s.rewritesZh?.[ri] || ''}</span>
+                                    </div>
+                                  </label>
+                                ))}
+                              </div>
+                            </>
+                          )}
+
+                          {/* 双语实时编辑：输入中文 → 自动匹配本地语言 */}
+                          <div className="bi-editor">
+                            <div className="bi-field">
+                              <label className="bi-label">
+                                <Pencil size={11} /> 中文台词
+                                <span className="bi-sub">输入后自动匹配 {langLabel}</span>
                               </label>
-                            ))}
+                              <textarea className="bi-zh" rows={2} value={effZh}
+                                placeholder="输入中文台词..."
+                                onClick={e => e.stopPropagation()}
+                                onChange={e => applyZh(s.id, e.target.value)} />
+                            </div>
+                            <div className="bi-local-field">
+                              <label className="bi-label">
+                                <Languages size={11} /> {langLabel}
+                                <span className={`bi-match ${isMatching ? 'is-matching' : ''}`}>
+                                  {isMatching
+                                    ? <><Loader2 size={10} className="spinner" /> 匹配中…</>
+                                    : <><Check size={10} /> 已匹配</>}
+                                </span>
+                              </label>
+                              <div className="bi-local">
+                                {effLocal ? effLocal : <span className="bi-local-empty">等待输入中文…</span>}
+                              </div>
+                            </div>
                           </div>
-                          <input placeholder="或手动微调台词..." className="rewrite-input"
-                            onKeyDown={e => {
-                              if (e.key === 'Enter' && e.target.value) {
-                                setSelectedRewrite({ ...selectedRewrite, [s.id]: e.target.value });
-                              }
-                            }} />
                         </div>
                       )}
                     </div>
