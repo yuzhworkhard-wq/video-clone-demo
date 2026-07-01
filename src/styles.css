@@ -107,20 +107,20 @@ body {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .tool-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .tool-card {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
+  gap: 10px;
+  padding: 14px 16px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -199,7 +199,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
+  padding: 16px 24px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -220,7 +220,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0;
-  padding: 16px 20px;
+  padding: 18px 24px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   overflow-x: auto;
@@ -280,10 +280,10 @@ body {
 
 /* ── Step Content ── */
 .step-content {
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 22px;
 }
 
 .step-actions {
@@ -351,7 +351,7 @@ body {
 .btn-ghost:hover:not(:disabled) { color: var(--text-primary); background: rgba(255,255,255,0.04); }
 .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
 
 .icon-btn {
   display: flex;
@@ -499,13 +499,13 @@ body {
 .form-stack {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 13px;
 }
 
 .form-row-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 14px;
 }
 
 .upload-done-row {
@@ -784,7 +784,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 14px;
+  padding: 13px 16px;
   background: transparent;
   border: none;
   border-bottom: 1px solid var(--border);
@@ -831,7 +831,7 @@ body {
 
 .asset-main {
   flex: 1;
-  padding: 16px;
+  padding: 20px;
   overflow-y: auto;
 }
 
@@ -892,7 +892,7 @@ body {
 .asset-card-area {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .asset-heading { font-size: 14px; font-weight: 600; }
@@ -1092,7 +1092,7 @@ body {
 .shot-card-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .shot-card {
@@ -1114,7 +1114,7 @@ body {
   grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr) 112px;
   column-gap: 28px;
   align-items: center;
-  padding: 12px 16px;
+  padding: 14px 20px;
   cursor: pointer;
   transition: background var(--transition);
 }
@@ -1207,7 +1207,7 @@ body {
 .shot-expand {
   border-top: 1px solid var(--border);
   background: var(--bg-card);
-  padding: 14px;
+  padding: 18px 20px;
   animation: expandIn 200ms ease;
 }
 
@@ -2042,8 +2042,8 @@ body {
 .ref-meta-compact {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
+  gap: 7px;
+  padding: 12px 14px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -2162,8 +2162,8 @@ body {
 .bi-editor {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: 10px;
+  padding: 14px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
