@@ -16,14 +16,14 @@ const STEPS = [
 function detectMode(text, hasImg) {
   const t = (text || '').trim();
   if (/[「」“”"]/.test(t) || /说|口播|台词|介绍/.test(t))
-    return { mode: 'script', reason: '描述里有台词信号（引号 / “说”）' };
+    return { mode: 'script', reason: '描述含台词' };
   if (/然后|接着|第二个镜头|先.+再/.test(t))
-    return { mode: 'script', reason: '描述提到多个镜头' };
+    return { mode: 'script', reason: '多镜头' };
   if (hasImg && t.length <= 30)
-    return { mode: 'motion', reason: '传了图 + 描述短 + 无台词' };
+    return { mode: 'motion', reason: '图 + 短描述' };
   if (!hasImg)
-    return { mode: 'script', reason: '没传图片，走镜头卡（台词栏可留空）' };
-  return { mode: 'script', reason: '描述较长，拆成镜头卡更稳' };
+    return { mode: 'script', reason: '没传图' };
+  return { mode: 'script', reason: '描述较长' };
 }
 
 /* ── 图片动效：动法与描述模板 ── */
@@ -117,10 +117,10 @@ function tileEmoji(card, imgKind) {
 const SHOT_TYPES = ['特写 · 固定', '特写 · 手持', '近景 · 固定', '近景 · 手持', '中景 · 固定', '中景 · 手持', '全景 · 固定'];
 const MOODS = ['平静', '兴奋', '惊讶', '恳切', '搞笑'];
 const REASONS = [
-  { key: 'mismatch', label: '画面和想要的不一样', hint: '意图没传达到 → 说明确认物还不够' },
-  { key: 'broken', label: '质量崩了（脸 / 手 / 字 / 台词）', hint: '模型翻车 → 归因给质检评估' },
-  { key: 'picking', label: '只是多生成几条挑一挑', hint: '抽卡型 → 应该发生在参考图层' },
-  { key: 'other', label: '其他', hint: '' },
+  { key: 'mismatch', label: '画面和想要的不一样' },
+  { key: 'broken', label: '质量崩了（脸 / 手 / 字 / 台词）' },
+  { key: 'picking', label: '只是多生成几条挑一挑' },
+  { key: 'other', label: '其他' },
 ];
 
 export function VideoGenModal({ onClose }) {
@@ -392,11 +392,9 @@ export function VideoGenModal({ onClose }) {
           <div className="modal-overlay vg-reason-overlay" onClick={() => resolveReason(null)}>
             <div className="vg-reason-box" onClick={e => e.stopPropagation()}>
               <h4>这条为什么不行？</h4>
-              <p className="vg-reason-sub">3 秒归因，帮工具搞清楚钱浪费在哪（Esc 跳过）</p>
               {REASONS.map(r => (
                 <button key={r.key} className="vg-reason-opt" onClick={() => resolveReason(r.key)}>
                   <span>{r.label}</span>
-                  {r.hint && <span className="vg-reason-hint">{r.hint}</span>}
                 </button>
               ))}
               <button className="btn-ghost btn-sm vg-reason-skip" onClick={() => resolveReason(null)}>
@@ -432,7 +430,6 @@ function StepInput({
   auto, mode, setManualMode, applySample, onNext,
 }) {
   const hasContent = text.trim().length > 0 || imgKind;
-  const switched = hasContent && mode !== auto.mode;
   const onKey = (e) => {
     if (e.key === 'Enter' && !e.shiftKey && hasContent) { e.preventDefault(); onNext(); }
   };
@@ -443,7 +440,7 @@ function StepInput({
 
       <div className="vg-hero-box">
         <textarea rows={3} className="vg-hero-textarea" value={text} onKeyDown={onKey}
-          placeholder={'一句话描述，或直接丢一张图进来\n例：让这只柴犬动起来，摆几个姿势'}
+          placeholder="一句话描述，或丢一张图进来"
           onChange={e => setText(e.target.value)} />
         <div className="vg-hero-bar">
           <input ref={fileRef} type="file" accept="image/*" hidden
@@ -479,10 +476,7 @@ function StepInput({
       </div>
 
       <p className="vg-reason-line vg-hero-reason">
-        {hasContent
-          ? <>系统判定：{auto.reason} → <b>{auto.mode === 'motion' ? '图片动效' : '镜头脚本'}</b>
-              {switched && <>（已手动切换为 <b>{mode === 'motion' ? '图片动效' : '镜头脚本'}</b>，切换已记录）</>}</>
-          : ' '}
+        {hasContent ? <>{auto.reason} → <b>{mode === 'motion' ? '图片动效' : '镜头脚本'}</b></> : ' '}
       </p>
 
       <div className="vg-hero-chips">
@@ -507,7 +501,7 @@ function StepMotion({
     <div className="step-content">
       {refilled && (
         <div className="vg-banner">
-          <RotateCcw size={14} /> 已回填上一版的全部参数——只改出问题的地方，再生成
+          <RotateCcw size={14} /> 已回填上一版参数
         </div>
       )}
       <div className="vg-motion-layout">
@@ -519,7 +513,6 @@ function StepMotion({
               : <span className="vg-img-emoji">🖼</span>}
             <span className="vg-img-tag">{imgKind === 'dog' ? '柴犬素材图' : '你的图片'}</span>
           </div>
-          <p className="vg-hint">你传的图就是画面本身，不再出脚本、不再出参考图</p>
         </div>
 
         <div className="vg-motion-right">
@@ -539,7 +532,7 @@ function StepMotion({
           ))}
 
           <div className="form-field vg-motion-desc">
-            <label>动作描述（选动法后自动填好，可改可不改）</label>
+            <label>动作描述</label>
             <textarea rows={2} value={motionText}
               placeholder="先在上面选一个动法"
               onChange={e => setMotionText(e.target.value)} />
@@ -576,17 +569,13 @@ function StepScript({
     <div className="step-content">
       {refilled && (
         <div className="vg-banner">
-          <RotateCcw size={14} /> 已回填上一版的镜头卡和参考图——只改出问题的那一层，再生成
+          <RotateCcw size={14} /> 已回填上一版参数
         </div>
       )}
 
       <div className="vg-script-head">
-        <div>
-          <h3 className="asset-heading">镜头卡（{cards.length} 个镜头）</h3>
-          <p className="asset-desc">台词逐字锁死传给模型；画面先用参考图便宜地定下来，再生成视频</p>
-        </div>
-        <button className="toggle-btn" onClick={() => setSkipConfirm(!skipConfirm)}
-          title="跳过行为会被记录，用来验证确认环节值不值">
+        <h3 className="asset-heading">镜头卡（{cards.length} 个镜头）</h3>
+        <button className="toggle-btn" onClick={() => setSkipConfirm(!skipConfirm)}>
           {skipConfirm ? <ToggleRight size={18} className="toggle-on" /> : <ToggleLeft size={18} className="toggle-off" />}
           跳过确认直接生成
         </button>
@@ -599,7 +588,7 @@ function StepScript({
             <div key={c.id} className="vg-card">
               <div className="vg-card-head">
                 <span className="vg-card-num">镜头 {idx + 1}</span>
-                <span className="vg-card-dur">~{c.dur}s（按台词字数估）</span>
+                <span className="vg-card-dur">~{c.dur}s</span>
                 <div className="vg-card-head-right">
                   <div className="form-field vg-field-inline">
                     <select value={c.shotType} onChange={e => patchCard(c.id, { shotType: e.target.value })}>
@@ -620,7 +609,7 @@ function StepScript({
               </div>
 
               <div className="form-field">
-                <label>台词逐字稿（锁死后模型不得改词）<span className="vg-lock-tag"><Lock size={9} /> 逐字锁定</span></label>
+                <label>台词逐字稿<span className="vg-lock-tag"><Lock size={9} /> 逐字锁定</span></label>
                 <div className="vg-line-row">
                   <input value={c.line} placeholder="没有台词可留空"
                     onChange={e => patchCard(c.id, { line: e.target.value })} />
@@ -635,11 +624,11 @@ function StepScript({
 
               <div className="form-row-2">
                 <div className="form-field">
-                  <label>画面内容（谁 + 在哪 + 做什么）</label>
+                  <label>画面内容</label>
                   <input value={c.scene} onChange={e => patchCard(c.id, { scene: e.target.value })} />
                 </div>
                 <div className="form-field">
-                  <label>动作与运镜（图管不住“动”，写在这里）</label>
+                  <label>动作与运镜</label>
                   <input value={c.action} onChange={e => patchCard(c.id, { action: e.target.value })} />
                 </div>
               </div>
@@ -647,7 +636,7 @@ function StepScript({
               {refStage && r && (
                 <div className="vg-ref-block">
                   <div className="vg-ref-bar">
-                    <span className="vg-ref-title">首帧参考图 · 点一张锁定</span>
+                    <span className="vg-ref-title">首帧参考图</span>
                     <span className="vg-ref-round">第 {r.round} 批</span>
                     <button className="btn-outline btn-sm" onClick={() => rerollRefs(c.id, idx)} disabled={r.loading}>
                       <RefreshCw size={13} /> 换一批 <FreeTag />
@@ -657,9 +646,9 @@ function StepScript({
                     </button>
                   </div>
                   {r.loading ? (
-                    <div className="vg-ref-loading"><Loader2 size={18} className="spinner" /> 出图中（约 10 秒 / 批，免费）...</div>
+                    <div className="vg-ref-loading"><Loader2 size={18} className="spinner" /> 出图中...</div>
                   ) : r.skipped ? (
-                    <p className="vg-hint">该镜头不用参考图，生成时靠文字描述</p>
+                    <p className="vg-hint">已跳过参考图</p>
                   ) : (
                     <div className="vg-ref-grid">
                       {r.cands.map((cand, i) => (
@@ -749,26 +738,20 @@ function StepResult({
 
           {status === 'adopted' ? (
             <div className="vg-banner vg-banner--success">
-              <CheckCircle2 size={14} /> 已采用，计入本周产出。这条一共花了 {totalSpent} 次生成——看板上的核心指标就是它
+              <CheckCircle2 size={14} /> 已采用 · 本条共 {totalSpent} 次生成
             </div>
           ) : status === 'discarded' ? (
             <div className="vg-banner">
-              已弃用{lastReason ? `（原因：${lastReason}）` : ''}，原因已进归因看板。还可以回去改了重新生成
+              已弃用{lastReason ? `（${lastReason}）` : ''}
             </div>
-          ) : (
-            <p className="asset-desc">自己看片：能用就采用；有问题点「重新生成」，所有参数原样回填，只改出问题的那一层。</p>
-          )}
-
-          {lastReason && status !== 'discarded' && (
-            <p className="vg-hint">上一版弃用原因已记录：{lastReason}</p>
-          )}
+          ) : null}
 
           <div className="vg-result-actions">
             <button className="btn-primary" onClick={onAdopt} disabled={status === 'adopted' || !isLatest}>
               <Check size={15} /> 采用
             </button>
             <button className="btn-outline" onClick={onRegen} disabled={!isLatest}>
-              <RefreshCw size={15} /> 重新生成（回填参数 · 再扣 1 条）
+              <RefreshCw size={15} /> 重新生成 · 扣 1 条
             </button>
             <button className="btn-ghost" onClick={status === 'adopted' ? onClose : onDiscard} >
               {status === 'adopted' ? '完成' : <><Trash2 size={14} /> 弃用</>}
