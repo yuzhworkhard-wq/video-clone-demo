@@ -2591,3 +2591,8 @@ body {
 .vg-send:disabled { background: var(--bg-elevated); color: var(--text-muted); cursor: default; }
 .vg-hero-reason { min-height: 18px; margin-top: 12px; text-align: center; }
 .vg-hero-chips { display: flex; align-items: center; gap: 8px; margin-top: 20px; }
+
+/* 修复：镜头卡内部字段块垂直间距（卡内没有 form-stack 包裹，用卡片自身的 gap 撑开） */
+.vg-card { display: flex; flex-direction: column; gap: 13px; }
+.vg-card-head { margin-bottom: 0; }
+.vg-ref-block { margin-top: 0; }
