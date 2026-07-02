@@ -14,7 +14,7 @@ const tools = [
   { icon: Clapperboard, label: '视频生成', category: 'video' },
 ];
 
-export function ToolboxPage({ onStartClone }) {
+export function ToolboxPage({ onStartClone, onStartVideoGen }) {
   return (
     <div className="toolbox-page">
       <div className="toolbox-header">
@@ -42,12 +42,11 @@ export function ToolboxPage({ onStartClone }) {
         <section className="tool-section">
           <h2 className="section-label">视频生成工具</h2>
           <div className="tool-grid">
-            {tools.filter(t => t.category === 'video').map(t => (
-              <button key={t.label} className="tool-card" disabled>
-                <t.icon size={20} strokeWidth={1.5} />
-                <span>{t.label}</span>
-              </button>
-            ))}
+            <button className="tool-card tool-card--primary" onClick={onStartVideoGen}>
+              <Clapperboard size={20} strokeWidth={1.5} />
+              <span>视频生成</span>
+              <span className="tool-badge">v2</span>
+            </button>
           </div>
         </section>
 
