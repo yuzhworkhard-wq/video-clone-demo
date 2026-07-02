@@ -2534,3 +2534,60 @@ body {
   .vg-input-layout, .vg-motion-layout, .vg-result-layout { flex-direction: column; }
   .vg-ref-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── 视频生成 v2：对话式大输入框入口（vg-hero） ── */
+.vg-hero { display: flex; flex-direction: column; align-items: center; padding: 44px 24px 32px; }
+.vg-hero-greet { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.vg-hero-title { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; margin-bottom: 24px; }
+.vg-hero-box {
+  width: 100%; max-width: 680px;
+  padding: 14px 14px 10px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px;
+  transition: border-color var(--transition);
+}
+.vg-hero-box:focus-within { border-color: var(--border-light); }
+.vg-hero-textarea {
+  width: 100%; background: transparent; border: none; outline: none; resize: none;
+  color: var(--text-primary); font-family: var(--font); font-size: 14px; line-height: 1.6;
+}
+.vg-hero-textarea::placeholder { color: var(--text-muted); }
+.vg-hero-bar { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.vg-attach-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 11px; font-size: 12px; color: var(--text-secondary);
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: 999px; cursor: pointer; font-family: var(--font);
+  transition: all var(--transition);
+}
+.vg-attach-chip:hover { border-color: var(--border-light); color: var(--text-primary); }
+.vg-attach-chip--filled { cursor: default; color: var(--text-primary); }
+.vg-attach-thumb { width: 18px; height: 18px; object-fit: cover; border-radius: 4px; }
+.vg-attach-x {
+  display: flex; padding: 1px; margin-left: 2px;
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+}
+.vg-attach-x:hover { color: var(--text-primary); }
+.vg-hero-modes { display: flex; gap: 4px; margin-left: auto; }
+.vg-mode-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; font-size: 11.5px; color: var(--text-muted);
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 999px; cursor: pointer; font-family: var(--font);
+  transition: all var(--transition);
+}
+.vg-mode-pill.active { color: var(--accent-hover); border-color: var(--accent); background: var(--accent-subtle); }
+.vg-send {
+  display: flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; flex-shrink: 0;
+  color: #fff; background: var(--accent);
+  border: none; border-radius: 50%; cursor: pointer;
+  transition: background var(--transition);
+}
+.vg-hero-bar .vg-send { margin-left: 0; }
+.vg-hero-modes + .vg-send { margin-left: 8px; }
+.vg-send:only-child, .vg-attach-chip + .vg-send { margin-left: auto; }
+.vg-send:hover:not(:disabled) { background: var(--accent-hover); }
+.vg-send:disabled { background: var(--bg-elevated); color: var(--text-muted); cursor: default; }
+.vg-hero-reason { min-height: 18px; margin-top: 12px; text-align: center; }
+.vg-hero-chips { display: flex; align-items: center; gap: 8px; margin-top: 20px; }

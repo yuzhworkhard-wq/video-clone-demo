@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  X, Upload, ChevronRight, ArrowLeft, Loader2, Check, RefreshCw,
+  X, Upload, ChevronRight, ArrowLeft, ArrowUp, Loader2, Check, RefreshCw,
   Lock, SkipForward, Sparkles, ImagePlus, Play, Plus, Trash2,
   ToggleLeft, ToggleRight, CheckCircle2, RotateCcw, Coins, Dices,
   Clapperboard, Film,
@@ -313,7 +313,7 @@ export function VideoGenModal({ onClose }) {
           </div>
         </div>
 
-        <StepIndicator steps={STEPS} current={step} />
+        {step > 0 && <StepIndicator steps={STEPS} current={step} />}
 
         <div className="modal-body">
           {generating ? (
@@ -426,83 +426,72 @@ function StepIndicator({ steps, current }) {
   );
 }
 
-/* ══ Step 0 输入 ══ */
+/* ══ Step 0 输入（对话式大输入框入口） ══ */
 function StepInput({
   text, setText, imgKind, imgUrl, onUploadClick, onRemoveImg, fileRef, handleUpload,
   auto, mode, setManualMode, applySample, onNext,
 }) {
   const hasContent = text.trim().length > 0 || imgKind;
+  const switched = hasContent && mode !== auto.mode;
+  const onKey = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && hasContent) { e.preventDefault(); onNext(); }
+  };
   return (
-    <div className="step-content">
-      <div className="vg-examples">
-        <span className="vg-examples-label">示例（点一下试试）</span>
+    <div className="step-content vg-hero">
+      <p className="vg-hero-greet">Hey，今天出什么素材？</p>
+      <h2 className="vg-hero-title">想生成什么视频？</h2>
+
+      <div className="vg-hero-box">
+        <textarea rows={3} className="vg-hero-textarea" value={text} onKeyDown={onKey}
+          placeholder={'一句话描述，或直接丢一张图进来\n例：让这只柴犬动起来，摆几个姿势'}
+          onChange={e => setText(e.target.value)} />
+        <div className="vg-hero-bar">
+          <input ref={fileRef} type="file" accept="image/*" hidden
+            onChange={e => handleUpload(e.target.files[0])} />
+          {!imgKind ? (
+            <button className="vg-attach-chip" onClick={onUploadClick}>
+              <ImagePlus size={13} /> 传图
+            </button>
+          ) : (
+            <span className="vg-attach-chip vg-attach-chip--filled">
+              {imgKind === 'dog'
+                ? <>🐕 柴犬素材图</>
+                : <><img src={imgUrl} alt="" className="vg-attach-thumb" /> 已传图片</>}
+              <button className="vg-attach-x" onClick={onRemoveImg}><X size={11} /></button>
+            </span>
+          )}
+          {hasContent && (
+            <span className="vg-hero-modes">
+              <button className={`vg-mode-pill ${mode === 'motion' ? 'active' : ''}`}
+                onClick={() => setManualMode('motion')}>
+                <Film size={11} /> 图片动效
+              </button>
+              <button className={`vg-mode-pill ${mode === 'script' ? 'active' : ''}`}
+                onClick={() => setManualMode('script')}>
+                <Clapperboard size={11} /> 镜头脚本
+              </button>
+            </span>
+          )}
+          <button className="vg-send" disabled={!hasContent} onClick={onNext} title="进入确认（Enter）">
+            <ArrowUp size={16} />
+          </button>
+        </div>
+      </div>
+
+      <p className="vg-reason-line vg-hero-reason">
+        {hasContent
+          ? <>系统判定：{auto.reason} → <b>{auto.mode === 'motion' ? '图片动效' : '镜头脚本'}</b>
+              {switched && <>（已手动切换为 <b>{mode === 'motion' ? '图片动效' : '镜头脚本'}</b>，切换已记录）</>}</>
+          : ' '}
+      </p>
+
+      <div className="vg-hero-chips">
+        <span className="vg-examples-label">试试</span>
         <button className="vg-example-chip" onClick={() => applySample(SAMPLE_A)}>
-          🐕 柴犬图 · 让它摆几个姿势
+          🐕 让图动起来 · 柴犬摆姿势
         </button>
         <button className="vg-example-chip" onClick={() => applySample(SAMPLE_B)}>
-          🏧 印尼口播 · 女子ATM前说台词
-        </button>
-      </div>
-
-      <div className="vg-input-layout">
-        <div className="vg-input-left">
-          {!imgKind ? (
-            <div className="vg-upload-tile" onClick={onUploadClick}>
-              <input ref={fileRef} type="file" accept="image/*" hidden
-                onChange={e => handleUpload(e.target.files[0])} />
-              <ImagePlus size={24} strokeWidth={1.5} />
-              <span>上传图片</span>
-              <span className="upload-hint">可选 · 图会参与模式判定</span>
-            </div>
-          ) : (
-            <div className="vg-upload-tile vg-upload-tile--filled">
-              {imgKind === 'dog'
-                ? <span className="vg-img-emoji">🐕</span>
-                : <img src={imgUrl} alt="" className="vg-img-real" />}
-              <button className="upload-remove-btn" onClick={onRemoveImg}><X size={14} /></button>
-              <span className="vg-img-tag">{imgKind === 'dog' ? '柴犬素材图（示例）' : '已上传'}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="vg-input-right">
-          <div className="form-field">
-            <label>想生成什么？一句话描述</label>
-            <textarea rows={4} value={text} placeholder='例：让这只柴犬动起来，摆几个姿势&#10;例：一位印尼女子对镜头说：「……」，然后展示到账画面'
-              onChange={e => setText(e.target.value)} />
-          </div>
-
-          <div className="vg-mode-tabs">
-            <button
-              className={`vg-mode-tab ${mode === 'motion' ? 'active' : ''}`}
-              onClick={() => setManualMode('motion')}>
-              <Film size={14} />
-              <div>
-                <b>图片动效</b>
-                <small>图动一下 · 3 次点击直达</small>
-              </div>
-            </button>
-            <button
-              className={`vg-mode-tab ${mode === 'script' ? 'active' : ''}`}
-              onClick={() => setManualMode('script')}>
-              <Clapperboard size={14} />
-              <div>
-                <b>镜头脚本</b>
-                <small>台词镜头 · 卡片确认 + 参考图</small>
-              </div>
-            </button>
-          </div>
-          <p className="vg-reason-line">
-            {hasContent ? <>系统判定：{auto.reason} → <b>{auto.mode === 'motion' ? '图片动效' : '镜头脚本'}</b>。判得不对？点另一个标签切换（切换会被记录，用于优化规则）</>
-              : '输入后系统自动判定走哪条路，也可以手动切换'}
-          </p>
-        </div>
-      </div>
-
-      <div className="step-actions">
-        <div />
-        <button className="btn-primary" disabled={!hasContent} onClick={onNext}>
-          进入确认 <ChevronRight size={16} />
+          🏧 带台词口播 · 印尼ATM
         </button>
       </div>
     </div>
