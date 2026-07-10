@@ -777,7 +777,7 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
             </div>
             <div className="sb-video-mini">
               <img src="frames/frame_01.jpg" alt="" className="sb-video-mini-el" />
-              <button className="sb-video-mini-play" title="预览源视频"><Play size={13} /></button>
+              <button className="sb-video-mini-play" title="预览源视频"><Play size={14} /></button>
               <div className="sb-video-mini-info">
                 <span className="sb-video-mini-name">source.mp4</span>
                 <span className="sb-video-mini-dur">0:14</span>
@@ -797,14 +797,14 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
                   <div key={img.id} className="sb-kel-thumb">
                     <img src={img.url} alt={`参考图 ${i + 1}`} />
                     <button className="sb-kel-del" onClick={() => removeRefImage(img.id)} aria-label={`移除参考图 ${i + 1}`}>
-                      <X size={11} />
+                      <X size={12} />
                     </button>
                     <span className="sb-kel-idx">图 {i + 1}</span>
                   </div>
                 ))}
                 {refImages.length < 3 && (
                   <button className="sb-kel-add" onClick={() => setUploadOpen(true)}>
-                    <ImagePlus size={16} strokeWidth={1.5} />
+                    <ImagePlus size={20} strokeWidth={1.5} />
                     <span>上传</span>
                   </button>
                 )}
