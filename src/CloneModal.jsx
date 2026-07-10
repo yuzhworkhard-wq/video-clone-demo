@@ -540,17 +540,13 @@ function buildClonePromptHtml(shots, region, refImages = [], instruction = '', k
     '',
     '### 视频整体设定',
     '*   **格式**：9:16 竖屏，手机手持拍摄视角，画面自然轻微晃动，具有真实生活感。',
-    `*   **剪辑 / 节奏（冻结）**：共 ${shots.length} 镜 14 秒，切点、每镜时长、分镜顺序与硬切转场 100% 复刻源视频。`,
-    '*   **光线与风格（冻结）**：白天街头自然光，逐镜亮度 / 布光与源视频一致，真实拍摄感，无滤镜、无景深虚化。',
-    `*   **场景**：街边 ATM ${CLONE_TOKENS.scene}（已锁定）；背景可微调（ATM 品牌 / 颜色可换），幅度不过大，不可室外变室内。`,
-    `*   **角色**：${CLONE_TOKENS.char} ×2（已锁定），换脸符合目标地区人群特征、各自全片锁同一人脸；身份属性不变；服装可换款式 / 颜色但须符合身份；动作与原片整体姿态一致。`,
+    `*   **剪辑 / 镜头（冻结）**：共 ${shots.length} 镜 14 秒，切点、每镜时长、分镜顺序与硬切转场 100% 复刻源视频；各镜景别 / 机位见下方分镜脚本，以 ${CLONE_TOKENS.keyframe}（关键帧参考）为基准逐镜一致。`,
+    '*   **光线与风格（冻结）**：白天街头自然光，亮度 / 布光与源视频一致，无滤镜、无景深虚化。',
+    `*   **场景**：街边 ATM ${CLONE_TOKENS.scene}（已锁定）；背景可微调（ATM 品牌 / 颜色可换），不可室外变室内。`,
+    `*   **角色**：${CLONE_TOKENS.char} ×2（已锁定）——换脸符合目标地区人群特征、各自全片锁同一人脸；身份属性不变，服装可换款式但须符合身份，动作与原片整体姿态一致。`,
     `*   **产品 / 界面**：${CLONE_TOKENS.ui}（已锁定），手机屏幕展示短剧 App 界面与到账画面。`,
-    `*   **景别 / 视角（冻结）**：以 ${CLONE_TOKENS.keyframe}（关键帧参考）为基准，全片逐镜保持景别、机位角度与镜头视角一致。`,
-    '*   **声音**：只有人声与环境音，禁止任何配乐 / 背景音乐；语速对齐源视频（约 6 字/秒）作为改写台词的字数约束；角色声音符合其身份特征。',
-    '*   **环境音**：还原源视频真实环境音——街道底噪、手机按键声、到账提示音。',
-    '*   **字幕样式（冻结）**：字体 / 位置 / 描边 / 大小与源视频一致，字幕语言与音频一致。',
-    `*   **目标地区 / 语言**：${region}，金额用当地货币 R$；音频与字幕绝不出现汉语。`,
-    '*   **口型同步**：人物口型必须与音频 / 台词完全同步，像真实说话。',
+    '*   **声音**：只有人声与真实环境音（街道底噪、手机按键声、到账提示音），禁止任何配乐 / 背景音乐；角色声音符合其身份特征，口型与台词完全同步。',
+    `*   **语言 / 字幕**：${region}，金额用当地货币 R$，音频与字幕绝不出现汉语；字幕样式（字体 / 位置 / 描边 / 大小）与源视频一致（冻结）。`,
   ];
   if (refImages.length) {
     const toks = refImages.map((img, i) => refTok(img, `@图${i + 1}`)).join(' ');
@@ -567,7 +563,8 @@ function buildClonePromptHtml(shots, region, refImages = [], instruction = '', k
   const body = [];
   shots.forEach((s, i) => {
     body.push(kfImgHtml(s, i, kfState) + `**镜头 ${i + 1} (${s.time.replace('-', ' - ')})**`);
-    body.push(`*   **画面描述**：${injectCloneTokens(s.content)}。${s.angle}（冻结），${s.comp}。`);
+    body.push(`*   **镜头 / 景别（冻结）**：${s.angle}；${s.comp}。`);
+    body.push(`*   **画面描述**：${injectCloneTokens(s.content)}。`);
     body.push(`*   **角色动作**：${s.action}。`);
     const lock = s.type === 'frozen' ? '冻结 · 跟原口型' : '改写 · 可本地化';
     body.push(`*   **台词（${lock}）**：${s.line}${s.zh ? `（中文对照：${s.zh}）` : ''}`);
@@ -605,36 +602,36 @@ const PromptEditor = React.memo(function PromptEditor({ html, onCount, onKfActio
 function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
   const langLabel = parseLangLabel(targetRegion);
   const initShots = [
-    { id: 1, time: '0:00-0:02', startMs: 0, endMs: 2000, kfMs: 0, angle: '中景 / 正面平角', content: '角色在街边ATM旁说话', line: 'Voce sabia que pode ganhar...', zh: '你知道你可以赚钱吗...', type: 'frozen', keyframe: true, refVersion: 1,
+    { id: 1, time: '0:00-0:02', startMs: 0, endMs: 2000, kfMs: 0, angle: '中景 / 正面平角', content: '角色站在街边ATM旁，面对镜头开口说话，身后有自然的街道人流', line: 'Voce sabia que pode ganhar...', zh: '你知道你可以赚钱吗...', type: 'frozen', keyframe: true, refVersion: 1,
       comp: '主体居中，胸上中景约占画面 2/3', action: '手持自拍面对镜头开场，语气抓人', ambient: '街道底噪（人声 / 车流），人声清晰',
       refDesc: '角色 IP + 街头ATM场景，中景正面', frameImg: 'frames/frame_01.jpg' },
-    { id: 2, time: '0:02-0:04', startMs: 2000, endMs: 4000, kfMs: 2000, angle: '中景 / 正面平角', content: '角色继续面对镜头讲述', line: 'Olha so, ...', zh: '你看...', type: 'frozen', keyframe: false, refVersion: 0,
+    { id: 2, time: '0:02-0:04', startMs: 2000, endMs: 4000, kfMs: 2000, angle: '中景 / 正面平角', content: '角色保持同一位置继续面对镜头讲述，神态自然', line: 'Olha so, ...', zh: '你看...', type: 'frozen', keyframe: false, refVersion: 0,
       comp: '与镜头 1 同机位，主体居中', action: '继续讲述并轻微点头示意，姿态与原片一致', ambient: '街道底噪延续',
       refDesc: '角色面对镜头讲述，中景正面', frameImg: 'frames/frame_02.jpg' },
-    { id: 3, time: '0:04-0:06', startMs: 4000, endMs: 6000, kfMs: 4000, angle: '特写 / 俯拍15', content: '手机屏幕展示App界面', line: 'Assista um episodio e ganhe R$2...', zh: '看一集可以获得2雷亚尔...', type: 'rewrite', keyframe: true, refVersion: 1,
+    { id: 3, time: '0:04-0:06', startMs: 4000, endMs: 6000, kfMs: 4000, angle: '特写 / 俯拍15', content: '手机屏幕展示短剧App界面，剧集列表与单集奖励标签清晰可见', line: 'Assista um episodio e ganhe R$2...', zh: '看一集可以获得2雷亚尔...', type: 'rewrite', keyframe: true, refVersion: 1,
       comp: '屏幕充满画面，界面元素完整可读', action: '手指滑动展示短剧剧集列表，操作符合真实物理交互', ambient: '手机滑动 / 点击轻响 + 街道底噪',
       refDesc: '手机屏幕特写，展示短剧App界面', frameImg: 'frames/frame_03.jpg',
       rewrites: ['Assista um episodio e ganhe R$2 na hora!', 'Veja um capitulo e receba R$2 direto!', 'Cada episodio vale R$2 pra voce!'],
       rewritesZh: ['看一集马上赚2雷亚尔!', '看一章直接拿2雷亚尔!', '每集价值2雷亚尔!'] },
-    { id: 4, time: '0:06-0:08', startMs: 6000, endMs: 8000, kfMs: 6000, angle: '特写 / 俯拍15', content: '金额展示: R$2/4/6/10', line: '...assista dois e ganhe R$4...', zh: '...看两集获得4雷亚尔...', type: 'rewrite', keyframe: true, money: true, refVersion: 1,
+    { id: 4, time: '0:06-0:08', startMs: 6000, endMs: 8000, kfMs: 6000, angle: '特写 / 俯拍15', content: '屏幕上金额档位 R$2/4/6/10 依次排开，数字与货币符号醒目', line: '...assista dois e ganhe R$4...', zh: '...看两集获得4雷亚尔...', type: 'rewrite', keyframe: true, money: true, refVersion: 1,
       comp: '屏幕特写，金额档位居中', action: '手指逐个点过 R$2/4/6/10 金额档位', ambient: '手机按键声',
       emph: '金额数字与货币符号 R$ 必须完整清晰可读，金额画面清晰度足够辨认',
       refDesc: '手机屏幕特写，金额 R$2/4/6/10 清晰可读', frameImg: 'frames/frame_04.jpg',
       rewrites: ['...assista dois capitulos e ganhe R$4...', '...dois episodios, R$4 garantido...', '...veja dois e receba R$4 na conta...'],
       rewritesZh: ['...看两章获得4雷亚尔...', '...两集, 4雷亚尔到手...', '...看两集直接到账4雷亚尔...'] },
-    { id: 5, time: '0:08-0:09', startMs: 8000, endMs: 9000, kfMs: 8000, angle: '中景 / 正面平角', content: '角色展示手机屏幕', line: 'E olha aqui o quanto ja ganhei...', zh: '你看我赚了多少...', type: 'frozen', keyframe: false, refVersion: 0,
+    { id: 5, time: '0:08-0:09', startMs: 8000, endMs: 9000, kfMs: 8000, angle: '中景 / 正面平角', content: '角色把手机屏幕转向镜头，展示App里的累计收益页', line: 'E olha aqui o quanto ja ganhei...', zh: '你看我赚了多少...', type: 'frozen', keyframe: false, refVersion: 0,
       comp: '主体居中，手机屏幕为视觉中心', action: '将手机屏幕转向镜头展示', ambient: '街道底噪',
       refDesc: '角色手持手机展示屏幕', frameImg: 'frames/frame_05.jpg' },
-    { id: 6, time: '0:09-0:11', startMs: 9000, endMs: 11000, kfMs: 9000, angle: '特写 / 俯拍15', content: '银行到账通知画面', line: 'Recebi R$500 direto na conta!', zh: '直接收到500雷亚尔!', type: 'frozen', keyframe: true, money: true, refVersion: 1,
+    { id: 6, time: '0:09-0:11', startMs: 9000, endMs: 11000, kfMs: 9000, angle: '特写 / 俯拍15', content: '屏幕弹出银行到账通知，R$500 与银行名完整可见', line: 'Recebi R$500 direto na conta!', zh: '直接收到500雷亚尔!', type: 'frozen', keyframe: true, money: true, refVersion: 1,
       comp: '通知弹窗居中特写', action: '点击领取 → 弹出到账短信 → 银行收款通知', ambient: '到账提示音「叮」+ 手机按键声',
       emph: '到账画面含完整元素链：提现页 → 弹窗奖励 → 点击领取 → 到账短信 → 银行收款通知；银行须为目标地区知名银行（如 Nubank / Itau）；说到到账时同步展示到账信息',
       refDesc: '手机特写，银行到账通知 R$500', frameImg: 'frames/frame_06.jpg' },
-    { id: 7, time: '0:11-0:13', startMs: 11000, endMs: 13000, kfMs: 11000, angle: '中景 / 正面平角', content: '角色指向手机说明', line: 'Baixa o app agora e comeca...', zh: '现在就下载App...', type: 'rewrite', keyframe: true, refVersion: 1,
+    { id: 7, time: '0:11-0:13', startMs: 11000, endMs: 13000, kfMs: 11000, angle: '中景 / 正面平角', content: '角色指向手机屏幕向观众喊话，画面带下载引导', line: 'Baixa o app agora e comeca...', zh: '现在就下载App...', type: 'rewrite', keyframe: true, refVersion: 1,
       comp: '主体居中，指向手机的手势入画', action: '指向手机屏幕做 CTA 手势', ambient: '街道底噪',
       refDesc: '角色指向手机，CTA动作', frameImg: 'frames/frame_07.jpg',
       rewrites: ['Baixa o app agora e comeca a ganhar!', 'Instala o app e comeca a lucrar hoje!', 'Corre, baixa agora e ganha dinheiro!'],
       rewritesZh: ['现在下载App开始赚钱!', '安装App今天就开始赚!', '快下载，马上赚钱!'] },
-    { id: 8, time: '0:13-0:14', startMs: 13000, endMs: 14000, kfMs: 13000, angle: '中景 / 正面平角', content: 'CTA收尾画面', line: 'Corre la!', zh: '快去吧!', type: 'frozen', keyframe: false, refVersion: 0,
+    { id: 8, time: '0:13-0:14', startMs: 13000, endMs: 14000, kfMs: 13000, angle: '中景 / 正面平角', content: '角色对镜头做收尾示意，动作利落', line: 'Corre la!', zh: '快去吧!', type: 'frozen', keyframe: false, refVersion: 0,
       comp: '主体居中收尾', action: '点头示意收尾，动作干脆', ambient: '街道底噪渐出',
       refDesc: 'CTA收尾，角色正面', frameImg: 'frames/frame_08.jpg' },
   ];
