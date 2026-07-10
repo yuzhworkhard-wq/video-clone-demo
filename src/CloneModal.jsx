@@ -4,7 +4,7 @@ import {
   Loader2, Check, RefreshCw, Lock, SkipForward,
   User, Palette, Smartphone, Edit3,
   ToggleLeft, ToggleRight, Play, ExternalLink,
-  FileVideo, MapPin, Package, Type, Globe2,
+  MapPin, Package, Type, Globe2,
   ImagePlus, Sparkles, Clock, Camera, MessageSquare,
   Eye, Pencil, CheckCircle2, Circle, ArrowLeft,
   Dices, Send, AlertTriangle, Pause, Unlock, Languages, Film, RotateCcw,
@@ -507,14 +507,14 @@ function refTok(img, label) {
   return `<span class="sb-tok sb-tok-ref" contenteditable="false"><img src="${img.url}" alt="">${label}</span>`;
 }
 
-// 分镜关键帧：内嵌在提示词里、跟在对应镜头标题下方（原子块，整体删）
+// 分镜关键帧：贴提示词右缘、从上到下一列，锚在各自镜头标题行（float 原子块，随该镜文字走位）
 // kfState: source = 源视频帧 | generating = 按参考图重生成中 | done = 已按参考图更新
 function kfImgHtml(s, i, state) {
   const veil = state === 'generating' ? '<span class="sb-kfimg-veil"><span class="sb-kfimg-spin"></span></span>' : '';
   const badge = state === 'done' ? '<span class="sb-kfimg-new">已更新</span>' : '';
-  return `<span class="sb-kfimg${state === 'done' ? ' sb-kfimg--new' : ''}" contenteditable="false">`
-    + `<span class="sb-kfimg-pic"><img src="${s.frameImg}" alt="镜头${i + 1}关键帧">${badge}${veil}</span>`
-    + `<span class="sb-kfimg-cap">镜头 ${i + 1} 关键帧 · ${s.time}</span></span>`;
+  return `<span class="sb-kfimg${state === 'done' ? ' sb-kfimg--new' : ''}" contenteditable="false" title="镜头 ${i + 1} 关键帧 · ${s.time}">`
+    + `<img src="${s.frameImg}" alt="镜头${i + 1}关键帧">`
+    + `<span class="sb-kfimg-num">${i + 1}</span>${badge}${veil}</span>`;
 }
 
 // 把拆解出的镜头脚本拼成「可直接看着改」的提示词 HTML（对齐参考图「编辑提示词」大文本框 + @图片 chip）
@@ -548,8 +548,7 @@ function buildClonePromptHtml(shots, region, refImages = [], instruction = '', k
     const tags = [s.angle];
     if (s.keyframe) tags.push('关键帧');
     if (s.money) tags.push('金额镜');
-    body.push(`**镜头 ${i + 1}（${s.time}）** · ${tags.join(' · ')}`);
-    body.push(kfImgHtml(s, i, kfState));
+    body.push(kfImgHtml(s, i, kfState) + `**镜头 ${i + 1}（${s.time}）** · ${tags.join(' · ')}`);
     body.push(`*   **画面**：${injectCloneTokens(s.content)}`);
     const lock = s.type === 'frozen' ? '冻结 · 跟原口型' : '改写 · 可本地化';
     body.push(`*   **台词（${lock}）**：${s.line}`);
@@ -716,14 +715,12 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
             <div className="sb-block-head">
               <span className="sb-block-title">参考视频</span>
             </div>
-            <div className="sb-refvideo">
-              <div className="sb-refvideo-thumb">
-                <img src="frames/frame_01.jpg" alt="" />
-                <button className="sb-refvideo-play" title="预览源视频"><Play size={13} /></button>
-              </div>
-              <div className="sb-refvideo-meta">
-                <span className="sb-refvideo-name"><FileVideo size={13} /> source.mp4</span>
-                <span className="sb-refvideo-sub">0:14 · {initShots.length} 镜</span>
+            <div className="sb-video-mini">
+              <img src="frames/frame_01.jpg" alt="" className="sb-video-mini-el" />
+              <button className="sb-video-mini-play" title="预览源视频"><Play size={13} /></button>
+              <div className="sb-video-mini-info">
+                <span className="sb-video-mini-name">source.mp4</span>
+                <span className="sb-video-mini-dur">0:14</span>
               </div>
             </div>
           </section>
