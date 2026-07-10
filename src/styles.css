@@ -3482,10 +3482,14 @@ body {
   transition: border-color var(--transition);
 }
 .up-ai:focus-within { border-color: var(--border-light); }
-.up-ai-gens { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.up-ai-gens {
+  display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap;
+  max-height: 380px; overflow-y: auto;
+  padding: 2px; margin: -2px;
+}
 .up-ai-gen {
   position: relative;
-  width: 124px; aspect-ratio: 3 / 4; padding: 0;
+  width: 100px; aspect-ratio: 9 / 16; padding: 0;   /* 与生成图原比例一致，整图显示不裁切 */
   overflow: hidden;
   background: var(--bg-card); border: 1px solid var(--border);
   border-radius: 10px; cursor: pointer;

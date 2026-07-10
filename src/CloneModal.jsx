@@ -648,7 +648,7 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
   const [localImgs, setLocalImgs] = useState([]);   // 本地上传的图：先进预览区（默认勾选），确认后点完成
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
-  const [aiGens, setAiGens] = useState([]);   // 生成结果：输入框上方从左到右排开，点选即采用
+  const [aiGens, setAiGens] = useState([]);   // 生成结果 {id,url}：生成不限次数，只有「采用」上限 3 张
   const aiToastOnce = useRef(false);
   const [toast, setToast] = useState(null);
   // 素材库：预置素材 + AI 生成后存入的（可变），aiGenSet 记录哪些是 AI 生成用于打标
@@ -676,7 +676,8 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [uploadOpen]);
 
-  const aiResults = ['frames/frame_04.jpg', 'frames/frame_05.jpg', 'frames/frame_01.jpg'];
+  // 生图素材池（demo）：不限生成次数，超出后从头轮换
+  const aiPool = ['frames/frame_04.jpg', 'frames/frame_05.jpg', 'frames/frame_01.jpg', 'frames/frame_09.jpg', 'frames/frame_02.jpg', 'frames/frame_06.jpg', 'frames/frame_07.jpg', 'frames/frame_08.jpg', 'frames/frame_03.jpg'];
 
   function showToast(msg) {
     setToast(msg);
@@ -714,14 +715,12 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
     setRefImages(prev => prev.filter(x => x.url !== url));
     invalidate();
   }
-  // AI 生图：结果排在输入框上方（左→右），不采用就只是预览；点选 = 采用（选用为参考图 + 存入素材库）
+  // AI 生图：生成不限次数（结果排在输入框上方，左→右），不采用就只是预览；点选 = 采用（选用为参考图 + 存入素材库，上限 3 张）
   function aiGenerate() {
     if (!aiPrompt.trim() || aiBusy) return;
-    const url = aiResults.find(u => !aiGens.includes(u));
-    if (!url) { showToast('Demo 示例图已全部生成，点选上方图片即可采用'); return; }
     setAiBusy(true);
     setTimeout(() => {
-      setAiGens(prev => [...prev, url]);
+      setAiGens(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, url: aiPool[prev.length % aiPool.length] }]);
       setAiBusy(false);
     }, 1300);
   }
@@ -938,14 +937,14 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
                     <div className="up-ai-results">
                       <span className="up-ai-results-label">生成结果</span>
                       <div className="up-ai-gens">
-                        {aiGens.map((url, i) => {
-                          const picked = refImages.some(r => r.url === url);
+                        {aiGens.map((g, i) => {
+                          const picked = refImages.some(r => r.url === g.url);
                           return (
-                            <button key={url} className={`up-ai-gen ${picked ? 'picked' : ''}`}
+                            <button key={g.id} className={`up-ai-gen ${picked ? 'picked' : ''}`}
                               disabled={refImages.length >= 3 && !picked}
                               title={picked ? '取消采用' : '点选采用（自动存入素材库）'}
-                              onClick={() => picked ? removeRefByUrl(url) : aiAdopt(url)}>
-                              <img src={url} alt={`生成结果 ${i + 1}`} />
+                              onClick={() => picked ? removeRefByUrl(g.url) : aiAdopt(g.url)}>
+                              <img src={g.url} alt={`生成结果 ${i + 1}`} />
                               {picked && <span className="up-lib-check"><Check size={12} /></span>}
                             </button>
                           );
