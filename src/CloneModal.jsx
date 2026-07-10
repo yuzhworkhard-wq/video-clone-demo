@@ -660,11 +660,13 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
   // 关键帧 hover 操作：重新生成（DOM 原位换图）/ 本地上传替换
   const kfFileRef = useRef();
   const kfTargetRef = useRef(null);
-  const kfTimersRef = useRef([]);
+  const timersRef = useRef([]);
+  // 最终确认：提交生成任务的轻量加载（提交中 → 已开始生成 → 关闭）
+  const [submitState, setSubmitState] = useState('idle'); // idle | submitting | done
   useEffect(() => () => {
     urlsRef.current.forEach(URL.revokeObjectURL);
     clearTimeout(toastRef.current);
-    kfTimersRef.current.forEach(clearTimeout);
+    timersRef.current.forEach(clearTimeout);
   }, []);
   // 弹窗打开时支持 Esc 关闭
   useEffect(() => {
@@ -752,7 +754,15 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
       if (img) img.src = `frames/frame_0${((i + v) % 9) + 1}.jpg`;
       span.classList.remove('sb-kfimg--busy');
     }, 1100);
-    kfTimersRef.current.push(t);
+    timersRef.current.push(t);
+  }
+
+  // 最终确认：模拟提交生成任务，走完轻量加载后关闭回工具箱
+  function submitGenerate() {
+    if (submitState !== 'idle') return;
+    setSubmitState('submitting');
+    timersRef.current.push(setTimeout(() => setSubmitState('done'), 1500));
+    timersRef.current.push(setTimeout(() => onNext(), 2700));
   }
   function onKfFile(e) {
     const f = e.target.files?.[0];
@@ -776,6 +786,28 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
       setGenState('done');
       setPromptHtml(buildClonePromptHtml(initShots, targetRegion, refImages, instr, 'done'));
     }, 1400);
+  }
+
+  if (submitState !== 'idle') {
+    return (
+      <div className="step-content analyze-overlay">
+        <div className="analyze-box">
+          {submitState === 'submitting' ? (
+            <>
+              <Loader2 size={28} className="spinner" />
+              <h3>正在提交生成任务...</h3>
+              <p className="analyze-stage">校验分镜与参考素材，排入生成队列</p>
+            </>
+          ) : (
+            <>
+              <div className="done-icon"><CheckCircle2 size={40} /></div>
+              <h3>已开始生成</h3>
+              <p className="analyze-stage">任务已进入队列，可在任务中心查看进度</p>
+            </>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -859,7 +891,7 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
         <button className="btn-ghost" onClick={onBack}>
           <ArrowLeft size={16} /> 上一步
         </button>
-        <button className="btn-primary" onClick={onNext}>
+        <button className="btn-primary" onClick={submitGenerate}>
           <Sparkles size={16} /> 确认无误，开始生成
         </button>
       </div>
