@@ -509,12 +509,20 @@ function refTok(img, label) {
 
 // 分镜关键帧：贴提示词右缘、从上到下一列，锚在各自镜头标题行（float 原子块，随该镜文字走位）
 // kfState: slot = 应用前只占位 | generating = 槽内转圈 | done = 生成出的参考图
+// done 态 hover 出操作：改完该镜脚本后可「按当前脚本重新生成」或「本地上传替换」
 const KF_SLOT_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
+const KF_REGEN_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>';
+const KF_UPLOAD_ICON = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>';
 function kfImgHtml(s, i, state) {
   const num = `<span class="sb-kfimg-num">${i + 1}</span>`;
   if (state === 'done') {
-    return `<span class="sb-kfimg sb-kfimg--new" contenteditable="false" title="镜头 ${i + 1} 关键帧 · ${s.time}">`
-      + `<img src="${s.frameImg}" alt="镜头${i + 1}关键帧">${num}</span>`;
+    return `<span class="sb-kfimg sb-kfimg--new" contenteditable="false" data-shot="${i}" data-v="0" title="镜头 ${i + 1} 关键帧 · ${s.time}">`
+      + `<img src="${s.frameImg}" alt="镜头${i + 1}关键帧">${num}`
+      + `<span class="sb-kfimg-acts">`
+      + `<button class="sb-kfimg-act" data-act="regen" title="按当前脚本重新生成">${KF_REGEN_ICON}</button>`
+      + `<button class="sb-kfimg-act" data-act="upload" title="本地上传替换">${KF_UPLOAD_ICON}</button>`
+      + `</span>`
+      + `<span class="sb-kfimg-load"><span class="sb-kfimg-spin"></span></span></span>`;
   }
   if (state === 'generating') {
     return `<span class="sb-kfimg sb-kfimg--slot sb-kfimg--gen" contenteditable="false" title="镜头 ${i + 1} 关键帧生成中…">`
@@ -567,12 +575,14 @@ function buildClonePromptHtml(shots, region, refImages = [], instruction = '', k
 
 // 大文本编辑器：非受控 contenteditable —— 挂载时写入一次 HTML，之后交给浏览器原生编辑，
 // React 不参与其子节点 diff（避免受控 contenteditable 的光标/清空问题）。@图片 chip 为原子块。
-const PromptEditor = React.memo(function PromptEditor({ html, onCount }) {
+const PromptEditor = React.memo(function PromptEditor({ html, onCount, onKfAction }) {
   const ref = useRef(null);
   useEffect(() => {
     const el = ref.current;
     if (el) { el.innerHTML = html; onCount(el.innerText.length); }
   }, [html]);
+  // 关键帧 hover 操作按钮是原生 HTML（不走 React），在容器上做事件委托
+  const hitAct = (e) => e.target.closest?.('.sb-kfimg-act');
   return (
     <div
       ref={ref}
@@ -581,6 +591,8 @@ const PromptEditor = React.memo(function PromptEditor({ html, onCount }) {
       suppressContentEditableWarning
       spellCheck={false}
       onInput={e => onCount(e.currentTarget.innerText.length)}
+      onMouseDown={e => { if (hitAct(e)) e.preventDefault(); }}
+      onClick={e => { const btn = hitAct(e); if (btn) { e.preventDefault(); onKfAction?.(btn); } }}
     />
   );
 });
@@ -633,7 +645,15 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
   const refInputRef = useRef();
   const urlsRef = useRef([]);
   const toastRef = useRef();
-  useEffect(() => () => { urlsRef.current.forEach(URL.revokeObjectURL); clearTimeout(toastRef.current); }, []);
+  // 关键帧 hover 操作：重新生成（DOM 原位换图）/ 本地上传替换
+  const kfFileRef = useRef();
+  const kfTargetRef = useRef(null);
+  const kfTimersRef = useRef([]);
+  useEffect(() => () => {
+    urlsRef.current.forEach(URL.revokeObjectURL);
+    clearTimeout(toastRef.current);
+    kfTimersRef.current.forEach(clearTimeout);
+  }, []);
   // 弹窗打开时支持 Esc 关闭
   useEffect(() => {
     if (!uploadOpen) return;
@@ -701,6 +721,39 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
   // 整段可直接编辑的提示词（挂载时生成 HTML，之后用户看着改；@图片 chip 为原子块）
   const [promptHtml, setPromptHtml] = useState(() => buildClonePromptHtml(initShots, targetRegion));
   const [charCount, setCharCount] = useState(0);
+  // 关键帧 hover 操作：提示词是非受控 contenteditable，React 不管其子树，改图直接操作该原子块的 DOM
+  function handleKfAction(btn) {
+    const span = btn.closest('.sb-kfimg');
+    if (!span || span.classList.contains('sb-kfimg--busy')) return;
+    if (btn.dataset.act === 'upload') {
+      kfTargetRef.current = span;
+      kfFileRef.current?.click();
+      return;
+    }
+    // regen：按当前脚本重新生成（demo 用下一帧素材模拟出新图）
+    span.classList.add('sb-kfimg--busy');
+    const t = setTimeout(() => {
+      const i = Number(span.dataset.shot) || 0;
+      const v = (Number(span.dataset.v) || 0) + 1;
+      span.dataset.v = String(v);
+      const img = span.querySelector('img');
+      if (img) img.src = `frames/frame_0${((i + v) % 9) + 1}.jpg`;
+      span.classList.remove('sb-kfimg--busy');
+    }, 1100);
+    kfTimersRef.current.push(t);
+  }
+  function onKfFile(e) {
+    const f = e.target.files?.[0];
+    const span = kfTargetRef.current;
+    e.target.value = '';
+    if (!f || !span) return;
+    const url = URL.createObjectURL(f);
+    urlsRef.current.push(url);
+    const img = span.querySelector('img');
+    if (img) img.src = url;
+    kfTargetRef.current = null;
+  }
+
   // 应用：把参考图 + 指令织入提示词，并把各镜头下的关键帧原位重生成一版供对照检查
   function applyAndGenerate() {
     if (!refImages.length) return;
@@ -785,7 +838,8 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
               {charCount} 字 · 直接改文字即可
             </span>
           </div>
-          <PromptEditor html={promptHtml} onCount={setCharCount} />
+          <PromptEditor html={promptHtml} onCount={setCharCount} onKfAction={handleKfAction} />
+          <input ref={kfFileRef} type="file" accept="image/*" hidden onChange={onKfFile} />
         </section>
       </div>
 
@@ -885,9 +939,6 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
                     <textarea className="up-ai-input" rows={2} value={aiPrompt} onChange={e => setAiPrompt(e.target.value)}
                       placeholder="描述想要的人物 / 产品图，例：巴西年轻男性，手持手机，街头自拍，暖色调" />
                     <div className="up-ai-foot">
-                      <span className="up-ai-hint">
-                        {aiGens.length ? '点选图片即采用（自动存入素材库），再点取消' : '生成的图片会出现在输入框上方'}
-                      </span>
                       <button className="sb-kel-apply" disabled={!aiPrompt.trim() || aiBusy} onClick={aiGenerate}>
                         {aiBusy
                           ? <><Loader2 size={14} className="spinner" /> 生成中…</>
