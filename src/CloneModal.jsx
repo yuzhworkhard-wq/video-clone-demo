@@ -508,18 +508,25 @@ function refTok(img, label) {
 }
 
 // 分镜关键帧：贴提示词右缘、从上到下一列，锚在各自镜头标题行（float 原子块，随该镜文字走位）
-// kfState: source = 源视频帧 | generating = 按参考图重生成中 | done = 已按参考图更新
+// kfState: slot = 应用前只占位 | generating = 槽内转圈 | done = 生成出的参考图
+const KF_SLOT_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
 function kfImgHtml(s, i, state) {
-  const veil = state === 'generating' ? '<span class="sb-kfimg-veil"><span class="sb-kfimg-spin"></span></span>' : '';
-  const badge = state === 'done' ? '<span class="sb-kfimg-new">已更新</span>' : '';
-  return `<span class="sb-kfimg${state === 'done' ? ' sb-kfimg--new' : ''}" contenteditable="false" title="镜头 ${i + 1} 关键帧 · ${s.time}">`
-    + `<img src="${s.frameImg}" alt="镜头${i + 1}关键帧">`
-    + `<span class="sb-kfimg-num">${i + 1}</span>${badge}${veil}</span>`;
+  const num = `<span class="sb-kfimg-num">${i + 1}</span>`;
+  if (state === 'done') {
+    return `<span class="sb-kfimg sb-kfimg--new" contenteditable="false" title="镜头 ${i + 1} 关键帧 · ${s.time}">`
+      + `<img src="${s.frameImg}" alt="镜头${i + 1}关键帧">${num}</span>`;
+  }
+  if (state === 'generating') {
+    return `<span class="sb-kfimg sb-kfimg--slot sb-kfimg--gen" contenteditable="false" title="镜头 ${i + 1} 关键帧生成中…">`
+      + `${num}<span class="sb-kfimg-spin"></span></span>`;
+  }
+  return `<span class="sb-kfimg sb-kfimg--slot" contenteditable="false" title="镜头 ${i + 1} · 点「应用并生成参考图」后在此生成">`
+    + `${num}${KF_SLOT_ICON}</span>`;
 }
 
 // 把拆解出的镜头脚本拼成「可直接看着改」的提示词 HTML（对齐参考图「编辑提示词」大文本框 + @图片 chip）
 // refImages / instruction：用户在「关键元素替换」上传并应用后，织入设定与各镜头旁的参考图
-function buildClonePromptHtml(shots, region, refImages = [], instruction = '', kfState = 'source') {
+function buildClonePromptHtml(shots, region, refImages = [], instruction = '', kfState = 'slot') {
   const head = [
     `一个用于抖音 / TikTok 短视频首屏吸睛的 14 秒高清克隆视频提示词。源视频为第一人称手机拍摄视角（9:16 竖屏），街头 ATM 场景、网赚题材，本地化到${region}。全片保持景别与原口型对齐，画面清晰、节奏紧凑。`,
     '',
@@ -849,39 +856,44 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
                 )
               )}
               {uploadTab === 'ai' && (
-                <div className="up-ai">
+                <div className="up-ai-wrap">
                   {(aiGens.length > 0 || aiBusy) && (
-                    <div className="up-ai-gens">
-                      {aiGens.map((url, i) => {
-                        const picked = refImages.some(r => r.url === url);
-                        return (
-                          <button key={url} className={`up-ai-gen ${picked ? 'picked' : ''}`}
-                            disabled={refImages.length >= 3 && !picked}
-                            title={picked ? '取消采用' : '点选采用（自动存入素材库）'}
-                            onClick={() => picked ? removeRefByUrl(url) : aiAdopt(url)}>
-                            <img src={url} alt={`生成结果 ${i + 1}`} />
-                            {picked && <span className="up-lib-check"><Check size={12} /></span>}
-                          </button>
-                        );
-                      })}
-                      {aiBusy && (
-                        <div className="up-ai-gen up-ai-gen--busy">
-                          <Loader2 size={15} className="spinner" />
-                        </div>
-                      )}
+                    <div className="up-ai-results">
+                      <span className="up-ai-results-label">生成结果</span>
+                      <div className="up-ai-gens">
+                        {aiGens.map((url, i) => {
+                          const picked = refImages.some(r => r.url === url);
+                          return (
+                            <button key={url} className={`up-ai-gen ${picked ? 'picked' : ''}`}
+                              disabled={refImages.length >= 3 && !picked}
+                              title={picked ? '取消采用' : '点选采用（自动存入素材库）'}
+                              onClick={() => picked ? removeRefByUrl(url) : aiAdopt(url)}>
+                              <img src={url} alt={`生成结果 ${i + 1}`} />
+                              {picked && <span className="up-lib-check"><Check size={12} /></span>}
+                            </button>
+                          );
+                        })}
+                        {aiBusy && (
+                          <div className="up-ai-gen up-ai-gen--busy">
+                            <Loader2 size={15} className="spinner" />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
-                  <textarea className="up-ai-input" rows={2} value={aiPrompt} onChange={e => setAiPrompt(e.target.value)}
-                    placeholder="描述想要的人物 / 产品图，例：巴西年轻男性，手持手机，街头自拍，暖色调" />
-                  <div className="up-ai-foot">
-                    <span className="up-ai-hint">
-                      {aiGens.length ? '点选图片即采用（自动存入素材库），再点取消' : '生成的图片会排在上方，点选即采用'}
-                    </span>
-                    <button className="sb-kel-apply" disabled={!aiPrompt.trim() || aiBusy} onClick={aiGenerate}>
-                      {aiBusy
-                        ? <><Loader2 size={14} className="spinner" /> 生成中…</>
-                        : <><Sparkles size={14} /> {aiGens.length ? '再生成一张' : '生成图片'}</>}
-                    </button>
+                  <div className="up-ai">
+                    <textarea className="up-ai-input" rows={2} value={aiPrompt} onChange={e => setAiPrompt(e.target.value)}
+                      placeholder="描述想要的人物 / 产品图，例：巴西年轻男性，手持手机，街头自拍，暖色调" />
+                    <div className="up-ai-foot">
+                      <span className="up-ai-hint">
+                        {aiGens.length ? '点选图片即采用（自动存入素材库），再点取消' : '生成的图片会出现在输入框上方'}
+                      </span>
+                      <button className="sb-kel-apply" disabled={!aiPrompt.trim() || aiBusy} onClick={aiGenerate}>
+                        {aiBusy
+                          ? <><Loader2 size={14} className="spinner" /> 生成中…</>
+                          : <><Sparkles size={14} /> {aiGens.length ? '再生成一张' : '生成图片'}</>}
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
