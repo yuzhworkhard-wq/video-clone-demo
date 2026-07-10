@@ -2,26 +2,62 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   X, Upload, ChevronRight, ChevronDown, ChevronUp,
   Loader2, Check, RefreshCw, Lock, SkipForward,
-  Image, User, Palette, Smartphone, Edit3,
+  User, Palette, Smartphone, Edit3,
   ToggleLeft, ToggleRight, Play, ExternalLink,
   FileVideo, MapPin, Package, Type, Globe2,
   ImagePlus, Sparkles, Clock, Camera, MessageSquare,
   Eye, Pencil, CheckCircle2, Circle, ArrowLeft,
-  Dices, Send, AlertTriangle, Pause, Unlock, Languages, Film,
+  Dices, Send, AlertTriangle, Pause, Unlock, Languages, Film, RotateCcw,
+  Link2, LayoutGrid, Clapperboard, Copy, Settings, Video, Trash2,
 } from 'lucide-react';
 
 const STEPS = [
-  { key: 'upload', label: '上传与产品信息' },
-  { key: 'assets', label: '基础素材生成' },
+  { key: 'upload', label: '上传参考视频' },
+  { key: 'crop', label: '裁剪视频' },
   { key: 'storyboard', label: '分镜编辑' },
-  { key: 'generate', label: '一键生成' },
 ];
+
+/* ── 左侧导航菜单（为未来的全局侧边菜单预留的占位）── */
+function CloneSidebar({ onHome }) {
+  const nav = [
+    { icon: LayoutGrid, label: '工具箱', onClick: onHome },
+    { icon: Clapperboard, label: '视频生成' },
+    { icon: Copy, label: '视频克隆', active: true },
+    { icon: Film, label: '任务中心' },
+  ];
+  return (
+    <aside className="clone-sidebar">
+      <button className="clone-sidebar-logo" onClick={onHome} title="返回工具箱">
+        <span className="logo-mark">S</span>
+        <span className="logo-text">SELVA</span>
+      </button>
+      <nav className="clone-sidebar-nav">
+        {nav.map(n => (
+          <button key={n.label}
+            className={`clone-nav-item ${n.active ? 'active' : ''}`}
+            onClick={n.onClick}>
+            <n.icon size={17} strokeWidth={1.6} />
+            <span>{n.label}</span>
+          </button>
+        ))}
+      </nav>
+      <div className="clone-sidebar-foot">
+        <button className="clone-nav-item">
+          <Settings size={17} strokeWidth={1.6} />
+          <span>设置</span>
+        </button>
+      </div>
+    </aside>
+  );
+}
 
 export function CloneModal({ onClose }) {
   const [step, setStep] = useState(0);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
   const [targetRegion, setTargetRegion] = useState('巴西 (pt-BR)');
+  const [videoFile, setVideoFile] = useState(null); // 上传的视频文件（提升，返回裁剪步骤后仍保留）
+  const [videoUrl, setVideoUrl] = useState(null);   // 对应对象 URL，供裁剪步骤播放
 
   const startAnalyze = () => {
     setAnalyzing(true);
@@ -35,44 +71,49 @@ export function CloneModal({ onClose }) {
       total += delay;
       setTimeout(() => setAnalyzeProgress(p), total);
     });
-    setTimeout(() => { setAnalyzing(false); setStep(1); }, total + 400);
+    setTimeout(() => { setAnalyzing(false); setStep(2); }, total + 400);   // 裁剪确认→拆解→分镜编辑
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container" onClick={e => e.stopPropagation()}>
-        <div className="modal-top-bar">
-          <span className="modal-title">视频克隆</span>
-          <button className="icon-btn" onClick={onClose}><X size={18} /></button>
+    <div className="clone-page">
+      <CloneSidebar onHome={onClose} />
+      <div className="clone-main">
+        <div className="clone-topbar">
+          <div className="clone-topbar-left">
+            <button className="icon-btn" onClick={onClose} title="返回"><ArrowLeft size={18} /></button>
+            <span className="clone-topbar-title">视频克隆</span>
+          </div>
+          <button className="icon-btn" onClick={onClose} title="关闭"><X size={18} /></button>
         </div>
 
         <StepIndicator steps={STEPS} current={step} />
 
-        <div className="modal-body">
-          {analyzing ? (
-            <div className="step-content analyze-overlay">
-              <div className="analyze-box">
-                <Loader2 size={28} className="spinner" />
-                <h3>正在拆解视频...</h3>
-                <div className="progress-bar-wrap">
-                  <div className="progress-bar" style={{ width: `${analyzeProgress}%` }} />
+        <div className="clone-page-body">
+          <div className="clone-page-inner">
+            {analyzing ? (
+              <div className="step-content analyze-overlay">
+                <div className="analyze-box">
+                  <Loader2 size={28} className="spinner" />
+                  <h3>正在拆解视频...</h3>
+                  <div className="progress-bar-wrap">
+                    <div className="progress-bar" style={{ width: `${analyzeProgress}%` }} />
+                  </div>
+                  <p className="analyze-stage">
+                    {analyzeProgress < 20 ? '提取视频帧...' :
+                     analyzeProgress < 50 ? '分析镜头切点...' :
+                     analyzeProgress < 80 ? '识别角色与场景...' :
+                     analyzeProgress < 100 ? '生成分镜脚本...' : '拆解完成'}
+                  </p>
                 </div>
-                <p className="analyze-stage">
-                  {analyzeProgress < 20 ? '提取视频帧...' :
-                   analyzeProgress < 50 ? '分析镜头切点...' :
-                   analyzeProgress < 80 ? '识别角色与场景...' :
-                   analyzeProgress < 100 ? '生成分镜脚本...' : '拆解完成'}
-                </p>
               </div>
-            </div>
-          ) : (
-            <>
-              {step === 0 && <StepUpload onNext={startAnalyze} targetRegion={targetRegion} onTargetRegion={setTargetRegion} />}
-              {step === 1 && <StepAssets onNext={() => setStep(2)} onBack={() => setStep(0)} />}
-              {step === 2 && <StepStoryboard onNext={() => setStep(3)} onBack={() => setStep(1)} targetRegion={targetRegion} />}
-              {step === 3 && <StepGenerate onBack={() => setStep(2)} onClose={onClose} />}
-            </>
-          )}
+            ) : (
+              <>
+                {step === 0 && <StepUpload onNext={() => setStep(1)} videoFile={videoFile} onVideoFile={setVideoFile} videoUrl={videoUrl} onVideoUrl={setVideoUrl} />}
+                {step === 1 && <StepCrop videoUrl={videoUrl} onNext={startAnalyze} onBack={() => setStep(0)} />}
+                {step === 2 && <StepStoryboard onNext={onClose} onBack={() => setStep(1)} targetRegion={targetRegion} />}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -95,32 +136,167 @@ function StepIndicator({ steps, current }) {
   );
 }
 
-/* ── Step 1: Upload ── */
-function StepUpload({ onNext, targetRegion, onTargetRegion }) {
-  const [file, setFile] = useState(null);
-  const [videoUrl, setVideoUrl] = useState(null);
-  const [form, setForm] = useState({
-    sourceCategory: '网赚', sourceSubtype: '短剧推广',
-    targetSubtype: '短剧推广',
-    logo: null, productName: 'ReelCash', extra: '',
-    aspectRatio: '9:16',
-  });
-  const fileRef = useRef();
-  const logoRef = useRef();
+/* ── 全局下拉：自定义可展开菜单（选中项高亮），替代原生 select ── */
+function Dropdown({ value, options, onChange, placeholder = '请选择' }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+  return (
+    <div className={`dd ${open ? 'dd--open' : ''}`} ref={ref}>
+      <button type="button" className="dd-trigger" onClick={() => setOpen(o => !o)}>
+        <span className={value ? '' : 'dd-placeholder'}>{value || placeholder}</span>
+        <ChevronDown size={14} className="dd-chevron" />
+      </button>
+      {open && (
+        <div className="dd-menu">
+          {options.map(o => (
+            <button type="button" key={o}
+              className={`dd-opt ${o === value ? 'dd-opt--sel' : ''}`}
+              onClick={() => { onChange(o); setOpen(false); }}>
+              <span>{o}</span>
+              {o === value && <Check size={13} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
-  const canProceed = file && form.sourceCategory && form.sourceSubtype
-    && form.targetSubtype && targetRegion;
+/* ── Step: 裁剪视频（时间轴取一段） ── */
+function StepCrop({ videoUrl, onNext, onBack }) {
+  const TOTAL = 15;  // demo 总时长（秒）
+  const [range, setRange] = useState({ start: 0, end: 13 });
+  const [cur, setCur] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const videoRef = useRef(null);
+  const trackRef = useRef(null);
+
+  const frames = Array.from({ length: 9 }, (_, i) => `frames/frame_0${i + 1}.jpg`);
+  const strip = [...frames, ...frames, ...frames];  // 铺满时间轴的缩略帧
+
+  const fmt = (s) => `0:${String(Math.max(0, Math.round(s))).padStart(2, '0')}`;
+
+  const togglePlay = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) { v.play().catch(() => {}); setPlaying(true); }
+    else { v.pause(); setPlaying(false); }
+  };
+
+  const dragHandle = (which) => (e) => {
+    e.preventDefault();
+    const move = (ev) => {
+      const rect = trackRef.current.getBoundingClientRect();
+      const t = Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width)) * TOTAL;
+      setRange(r => which === 'start'
+        ? { ...r, start: Math.min(t, r.end - 1) }
+        : { ...r, end: Math.max(t, r.start + 1) });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  const reset = () => setRange({ start: 0, end: TOTAL });
+  const leftPct = (range.start / TOTAL) * 100;
+  const widthPct = ((range.end - range.start) / TOTAL) * 100;
+
+  return (
+    <div className="step-content crop-step">
+      <div className="crop-panel">
+        <div className="crop-stage">
+          <div className="crop-video">
+          {videoUrl
+            ? <video ref={videoRef} src={videoUrl} className="crop-video-el" playsInline
+                onTimeUpdate={e => setCur(e.target.currentTime)} onEnded={() => setPlaying(false)} />
+            : <img src="frames/frame_04.jpg" alt="" className="crop-video-el" />}
+          <div className="crop-caption">Kumpulkan jumlah hadiah untuk menyelesaikan tugas</div>
+        </div>
+
+        <div className="crop-transport">
+          <button className="crop-reset" onClick={reset} title="重置选取"><RotateCcw size={16} /></button>
+          <button className="crop-play" onClick={togglePlay}>{playing ? <Pause size={18} /> : <Play size={18} />}</button>
+          <span className="crop-timer">{fmt(cur)} / {TOTAL}s</span>
+        </div>
+
+        <div className="crop-select">
+          <span className="crop-select-label">选取</span>
+          <span className="crop-select-t">{fmt(range.start)}</span>
+          <span className="crop-select-dash">—</span>
+          <span className="crop-select-t">{fmt(range.end)}</span>
+          <span className="crop-select-total">共 {fmt(TOTAL)}</span>
+        </div>
+      </div>
+
+      <div className="crop-timeline">
+        <div className="crop-ruler">
+          {Array.from({ length: 6 }, (_, i) => <span key={i}>{fmt(i * 3)}</span>)}
+        </div>
+        <div className="crop-track" ref={trackRef} onDoubleClick={reset}>
+          <div className="crop-strip">
+            {strip.map((f, i) => <img key={i} src={f} alt="" draggable={false} />)}
+          </div>
+          <div className="crop-range" style={{ left: `${leftPct}%`, width: `${widthPct}%` }}>
+            <div className="crop-handle crop-handle--l" onPointerDown={dragHandle('start')}>
+              <span className="crop-grip" />
+            </div>
+            <div className="crop-handle crop-handle--r" onPointerDown={dragHandle('end')}>
+              <span className="crop-handle-time">{fmt(range.end)}</span>
+              <span className="crop-grip" />
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <div className="step-actions">
+        <button className="btn-ghost" onClick={onBack}><ArrowLeft size={16} /> 上一步</button>
+        <button className="btn-primary" onClick={onNext}><Check size={16} /> 确认裁剪</button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Step 1: Upload ── */
+function StepUpload({ onNext, videoFile, onVideoFile, videoUrl, onVideoUrl }) {
+  const file = videoFile;        // 视频状态提升到 CloneModal，返回裁剪步骤后仍保留
+  const setFile = onVideoFile;
+  const setVideoUrl = onVideoUrl;
+  const [link, setLink] = useState('');
+  const [phase, setPhase] = useState(() => (videoFile ? 'done' : 'empty'));  // empty | uploading | done
+  const fileRef = useRef();
+  const uploadTimer = useRef(null);
+
+  useEffect(() => () => clearTimeout(uploadTimer.current), []);
+
+  const canProceed = phase === 'done' || (phase === 'empty' && link.trim().length > 0);
 
   const handleFile = (f) => {
     if (!f) return;
     setFile(f);
     setVideoUrl(URL.createObjectURL(f));
+    setPhase('uploading');
+    clearTimeout(uploadTimer.current);
+    uploadTimer.current = setTimeout(() => setPhase('done'), 1500);  // 模拟上传
   };
 
   const removeFile = () => {
+    clearTimeout(uploadTimer.current);
     if (videoUrl) URL.revokeObjectURL(videoUrl);
     setFile(null);
     setVideoUrl(null);
+    setPhase('empty');
   };
 
   const handleFileDrop = (e) => {
@@ -128,341 +304,100 @@ function StepUpload({ onNext, targetRegion, onTargetRegion }) {
     if (e.dataTransfer?.files?.[0]) handleFile(e.dataTransfer.files[0]);
   };
 
+  // 让 <video> 显示首帧（blob 视频默认黑屏，seek 一下强制出帧）
+  const showFirstFrame = (e) => { try { e.currentTarget.currentTime = 0.1; } catch {} };
+
+  const platforms = ['TikTok', 'Instagram', 'YouTube', '抖音', '小红书'];
+
   return (
     <div className="step-content">
-      <div className="upload-split">
-        <div className="upload-split-left">
-          {!file ? (
+      <div className="upload-hero">
+        {/* 左：克隆效果展示图（竖版，四周留边完整展示不裁切）*/}
+        <div className="upload-hero-left">
+          <img src="clone-showcase.png" alt="AI 克隆效果展示" className="upload-showcase-img" />
+        </div>
+
+        {/* 右：上传参考视频 / 使用链接 */}
+        <div className="upload-hero-right">
+          <div className="upload-hero-head">
+            <h2 className="upload-hero-title">克隆爆款，<span className="accent-text">放大赢面</span></h2>
+            <p className="upload-hero-desc">
+              上传参考视频或粘贴链接，AI 自动拆解镜头、改写台词，生成符合目标地区的多语种广告克隆片
+            </p>
+          </div>
+
+          {phase === 'empty' && (
             <div
-              className="upload-zone upload-zone-portrait"
+              className="upload-card"
               onDragOver={e => e.preventDefault()}
               onDrop={handleFileDrop}
               onClick={() => fileRef.current?.click()}
             >
               <input ref={fileRef} type="file" accept="video/*" hidden
                 onChange={e => handleFile(e.target.files[0])} />
-              <div className="upload-placeholder">
-                <Upload size={28} strokeWidth={1.5} />
-                <span>拖拽或点击上传源视频</span>
-                <span className="upload-hint">MP4 / MOV, 15s 以内, 500MB 以内</span>
-              </div>
-            </div>
-          ) : (
-            <div className="upload-done-col">
-              <div className="upload-done-video-portrait">
-                <video src={videoUrl} controls className="upload-done-player-portrait" />
-                <button className="upload-remove-btn" onClick={removeFile} title="移除视频">
-                  <X size={14} />
+              <div className="upload-card-icon"><Video size={22} strokeWidth={1.5} /></div>
+              <span className="upload-card-title">上传参考视频</span>
+              <span className="upload-card-hint">MP4 / MOV · 500MB 以内</span>
+              <div className="upload-card-btns">
+                <button type="button" className="btn-primary btn-sm"
+                  onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}>
+                  <Upload size={13} /> 上传视频
                 </button>
-                <div className="upload-done-info-overlay">
-                  <FileVideo size={13} />
-                  <span className="upload-filename">{file.name}</span>
-                  <span className="upload-meta">{(file.size / 1024 / 1024).toFixed(1)} MB</span>
-                </div>
               </div>
             </div>
           )}
-        </div>
 
-        <div className="upload-split-right">
-          <div className="form-stack">
-            <div className="form-row-2">
-              <div className="form-field">
-                <label>源产品大类 <span className="required">*</span></label>
-                <select value={form.sourceCategory}
-                  onChange={e => setForm({ ...form, sourceCategory: e.target.value })}>
-                  <option value="">请选择</option>
-                  <option>网赚</option>
-                  <option>互娱</option>
-                  <option>社交</option>
-                  <option>其他</option>
-                </select>
-              </div>
-              <div className="form-field">
-                <label>源产品子类 <span className="required">*</span></label>
-                <input placeholder="如：消除游戏" value={form.sourceSubtype}
-                  onChange={e => setForm({ ...form, sourceSubtype: e.target.value })} />
+          {phase === 'uploading' && (
+            <div className="upload-panel upload-panel--busy">
+              <video className="upload-panel-bg" src={videoUrl} muted playsInline
+                preload="auto" onLoadedData={showFirstFrame} />
+              <div className="upload-panel-body">
+                <Loader2 size={26} className="spinner" />
+                <span className="upload-panel-text">上传中...</span>
               </div>
             </div>
-            <div className="form-row-2">
-              <div className="form-field">
-                <label>目标产品子类 <span className="required">*</span></label>
-                <input placeholder="如：短剧" value={form.targetSubtype}
-                  onChange={e => setForm({ ...form, targetSubtype: e.target.value })} />
-              </div>
-              <div className="form-field">
-                <label>目标地区 <span className="required">*</span></label>
-                <input placeholder="如：pt-BR 巴西、es-MX 墨西哥" value={targetRegion}
-                  onChange={e => onTargetRegion(e.target.value)} />
-              </div>
-            </div>
-            <div className="form-field">
-              <label>画面比例 <span className="required">*</span></label>
-              <div className="ratio-picker">
-                {['9:16', '16:9', '1:1', '4:3'].map(r => (
-                  <button key={r} type="button"
-                    className={`ratio-chip ${form.aspectRatio === r ? 'ratio-chip--active' : ''}`}
-                    onClick={() => setForm({ ...form, aspectRatio: r })}>
-                    <span className={`ratio-icon ratio-icon--${r.replace(':', 'x')}`} />
-                    {r}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="form-row-2">
-              <div className="form-field">
-                <label>产品 Logo</label>
-                <div className="logo-upload" onClick={() => logoRef.current?.click()}>
-                  <input ref={logoRef} type="file" accept="image/*" hidden
-                    onChange={e => setForm({ ...form, logo: e.target.files[0] })} />
-                  {form.logo ? (
-                    <span className="logo-name">{form.logo.name}</span>
-                  ) : (
-                    <span className="logo-placeholder"><ImagePlus size={16} /> 上传 Logo</span>
-                  )}
+          )}
+
+          {phase === 'done' && (
+            <div className="upload-panel upload-panel--done">
+              <video className="upload-panel-bg" src={videoUrl} muted playsInline
+                preload="auto" onLoadedData={showFirstFrame} />
+              <div className="upload-panel-media">
+                <video className="upload-panel-video" src={videoUrl} muted playsInline
+                  preload="auto" onLoadedData={showFirstFrame} />
+                <div className="upload-panel-overlay">
+                  <Video size={22} />
+                  <span className="upload-selected-pill">已选择</span>
                 </div>
               </div>
-              <div className="form-field">
-                <label>产品名称</label>
-                <input placeholder="配合 Logo 使用" value={form.productName}
-                  onChange={e => setForm({ ...form, productName: e.target.value })} />
-              </div>
+              <button className="upload-panel-delete" onClick={removeFile} title="移除视频">
+                <Trash2 size={16} />
+              </button>
             </div>
-            <div className="form-field">
-              <label>额外上下文</label>
-              <textarea rows={2} placeholder="补充说明（可选）" value={form.extra}
-                onChange={e => setForm({ ...form, extra: e.target.value })} />
+          )}
+
+          <div className="upload-or"><span>或使用链接</span></div>
+
+          <div className="upload-link">
+            <Link2 size={15} className="upload-link-icon" />
+            <input
+              placeholder="粘贴视频链接（TikTok / YouTube / 抖音 …）"
+              value={link}
+              onChange={e => setLink(e.target.value)}
+            />
+          </div>
+
+          <div className="upload-platforms">
+            <span className="upload-platforms-label">支持平台</span>
+            <div className="upload-platforms-chips">
+              {platforms.map(p => <span key={p} className="platform-chip">{p}</span>)}
             </div>
           </div>
+
+          <button className="btn-primary upload-next" disabled={!canProceed} onClick={onNext}>
+            下一步 <ChevronRight size={16} />
+          </button>
         </div>
-      </div>
-
-      <div className="step-actions">
-        <div />
-        <button className="btn-primary" disabled={!canProceed} onClick={onNext}>
-          开始拆解 <ChevronRight size={16} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ── Step 2: Base Assets ── */
-function StepAssets({ onNext, onBack }) {
-  const [sub, setSub] = useState(0);
-  const [sceneLocked, setSceneLocked] = useState(false);
-  const [sceneSkipped, setSceneSkipped] = useState(false);
-  const [uiLocked, setUiLocked] = useState(false);
-  const [uiSkipped, setUiSkipped] = useState(false);
-  const [sceneLoading, setSceneLoading] = useState(false);
-  const [uiLoading, setUiLoading] = useState(false);
-
-  const initChars = [
-    { id: 1, role: '老板', gender: '男', age: '35-45', trait: '成熟稳重', locked: false, loading: false },
-    { id: 2, role: '路人', gender: '女', age: '20-28', trait: '年轻活泼', locked: false, loading: false },
-  ];
-  const [characters, setCharacters] = useState(initChars);
-  const [activeCharId, setActiveCharId] = useState(1);
-  const activeChar = characters.find(c => c.id === activeCharId);
-  const allCharsHandled = characters.every(c => c.locked || c.skipped);
-
-  const rerollChar = (id) => {
-    setCharacters(prev => prev.map(c => c.id === id ? { ...c, loading: true } : c));
-    setTimeout(() => setCharacters(prev => prev.map(c => c.id === id ? { ...c, loading: false } : c)), 1200);
-  };
-  const lockChar = (id) => setCharacters(prev => prev.map(c => c.id === id ? { ...c, locked: true } : c));
-  const skipChar = (id) => setCharacters(prev => prev.map(c => c.id === id ? { ...c, skipped: true } : c));
-  const rerollScene = () => { setSceneLoading(true); setTimeout(() => setSceneLoading(false), 1200); };
-  const rerollUI = () => { setUiLoading(true); setTimeout(() => setUiLoading(false), 1200); };
-
-  const sceneDone = sceneLocked || sceneSkipped;
-  const uiDone = uiLocked || uiSkipped;
-
-  const subTabs = [
-    { label: '角色 IP', icon: User, done: allCharsHandled },
-    { label: '场景风格', icon: Palette, done: sceneDone },
-    { label: '产品界面', icon: Smartphone, done: uiDone },
-  ];
-
-  return (
-    <div className="step-content">
-      <div className="asset-layout">
-        <div className="asset-sidebar">
-          {subTabs.map((t, i) => (
-            <button key={i}
-              className={`asset-sidebar-tab ${sub === i ? 'active' : ''} ${t.done ? 'done' : ''}`}
-              onClick={() => setSub(i)}>
-              <span className="asset-sidebar-num">{t.done ? <Check size={12} /> : i + 1}</span>
-              {t.done ? <Lock size={13} /> : <t.icon size={13} />}
-              <span>{t.label}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="asset-main">
-          {sub === 0 && (
-            <div className="asset-card-area">
-              <div className="char-tabs">
-                {characters.map(c => (
-                  <button key={c.id}
-                    className={`char-tab ${activeCharId === c.id ? 'active' : ''} ${c.locked ? 'char-locked' : ''} ${c.skipped ? 'char-skipped' : ''}`}
-                    onClick={() => setActiveCharId(c.id)}>
-                    <User size={12} />
-                    <span>角色 {c.id}: {c.role}</span>
-                    {c.locked && <Lock size={10} />}
-                    {c.skipped && <SkipForward size={10} />}
-                  </button>
-                ))}
-              </div>
-              {activeChar && (
-                <>
-                  <div className="char-info-row">
-                    <h3 className="asset-heading">角色 {activeChar.id} — {activeChar.role}</h3>
-                    <div className="char-attrs">
-                      <span className="char-attr">{activeChar.gender}</span>
-                      <span className="char-attr">{activeChar.age}岁</span>
-                      <span className="char-attr">{activeChar.trait}</span>
-                    </div>
-                  </div>
-                  <p className="asset-desc">
-                    系统识别源视频中 {characters.length} 个角色，基于目标地区自动生成符合当地人群特征的角色形象
-                  </p>
-                  <div className="asset-compare">
-                    <div className="compare-col">
-                      <span className="compare-label">原角色</span>
-                      <div className="preview-placeholder small">
-                        <User size={28} strokeWidth={1} />
-                        <span>源视频角色截图</span>
-                        <span className="char-role-tag">{activeChar.role} / {activeChar.gender} / {activeChar.age}岁</span>
-                      </div>
-                    </div>
-                    <ChevronRight size={18} className="compare-arrow" />
-                    <div className="compare-col">
-                      <span className="compare-label">新角色 IP</span>
-                      <div className="preview-placeholder small">
-                        {activeChar.loading ? (
-                          <><Loader2 size={22} className="spinner" /> 生成中...</>
-                        ) : (
-                          <><Sparkles size={28} strokeWidth={1} /><span>AI 生成全身参考图</span></>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="scene-prompt-row">
-                    <input placeholder="输入角色提示词重新生成（如：30岁东南亚男性、戴眼镜）"
-                      className="scene-prompt-input"
-                      disabled={activeChar.locked || activeChar.skipped} />
-                    <button className="btn-outline btn-sm" onClick={() => rerollChar(activeChar.id)}
-                      disabled={activeChar.locked || activeChar.skipped || activeChar.loading}>
-                      <Dices size={13} /> 重新生成
-                    </button>
-                  </div>
-                  <div className="asset-actions">
-                    <button className="btn-primary btn-sm" onClick={() => lockChar(activeChar.id)}
-                      disabled={activeChar.locked || activeChar.skipped}>
-                      {activeChar.locked ? <><Lock size={13} /> 已锁定</> : <><Lock size={13} /> 锁定角色</>}
-                    </button>
-                    <button className="btn-ghost btn-sm" onClick={() => skipChar(activeChar.id)}
-                      disabled={activeChar.locked || activeChar.skipped}>
-                      <SkipForward size={13} /> 跳过（沿用原角色）
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {sub === 1 && (
-            <div className="asset-card-area">
-              <h3 className="asset-heading">物理场景 — 街头ATM旁</h3>
-              <p className="asset-desc">保持源视频亮度/布光/真实感，在约束范围内微调背景元素</p>
-              <div className="asset-compare">
-                <div className="compare-col">
-                  <span className="compare-label">原场景</span>
-                  <div className="preview-placeholder small">
-                    <Camera size={28} strokeWidth={1} />
-                    <span>原视频场景截图</span>
-                  </div>
-                </div>
-                <ChevronRight size={18} className="compare-arrow" />
-                <div className="compare-col">
-                  <span className="compare-label">新场景</span>
-                  <div className="preview-placeholder small">
-                    {sceneLoading ? (
-                      <><Loader2 size={22} className="spinner" /> 生成中...</>
-                    ) : (
-                      <><Palette size={28} strokeWidth={1} /><span>生成的场景预览</span></>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="scene-prompt-row">
-                <input placeholder="输入场景提示词重新生成（如：换成咖啡店门口）" className="scene-prompt-input" />
-                <button className="btn-outline btn-sm" onClick={rerollScene} disabled={sceneDone || sceneLoading}>
-                  <RefreshCw size={13} /> 重新生成
-                </button>
-              </div>
-              <div className="asset-actions">
-                <button className="btn-primary btn-sm" onClick={() => setSceneLocked(true)} disabled={sceneDone}>
-                  {sceneLocked ? <><Lock size={13} /> 已确认</> : <><Check size={13} /> 确认</>}
-                </button>
-                <button className="btn-ghost btn-sm" onClick={() => setSceneSkipped(true)} disabled={sceneDone}>
-                  {sceneSkipped ? <><SkipForward size={13} /> 已跳过</> : <><SkipForward size={13} /> 跳过</>}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {sub === 2 && (
-            <div className="asset-card-area">
-              <h3 className="asset-heading">产品界面图</h3>
-              <p className="asset-desc">基于产品 Logo 和名称，截取源视频手机屏幕关键帧并生成目标产品界面</p>
-              <div className="asset-compare">
-                <div className="compare-col">
-                  <span className="compare-label">原截图</span>
-                  <div className="preview-placeholder small">
-                    <Smartphone size={28} strokeWidth={1} />
-                    <span>源视频手机屏幕截图</span>
-                  </div>
-                </div>
-                <ChevronRight size={18} className="compare-arrow" />
-                <div className="compare-col">
-                  <span className="compare-label">生成界面</span>
-                  <div className="preview-placeholder small">
-                    {uiLoading ? (
-                      <><Loader2 size={22} className="spinner" /> 生成中...</>
-                    ) : (
-                      <><Sparkles size={28} strokeWidth={1} /><span>目标产品界面参考图</span></>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="asset-actions">
-                <button className="btn-outline btn-sm" onClick={rerollUI} disabled={uiDone || uiLoading}>
-                  <RefreshCw size={13} /> 重新生成
-                </button>
-                <button className="btn-outline btn-sm" disabled={uiDone}>
-                  <Upload size={13} /> 上传替代
-                </button>
-                <button className="btn-primary btn-sm" onClick={() => setUiLocked(true)} disabled={uiDone}>
-                  {uiLocked ? <><Lock size={13} /> 已确认</> : <><Check size={13} /> 确认</>}
-                </button>
-                <button className="btn-ghost btn-sm" onClick={() => setUiSkipped(true)} disabled={uiDone}>
-                  {uiSkipped ? <><SkipForward size={13} /> 已跳过</> : <><SkipForward size={13} /> 跳过</>}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="step-actions">
-        <button className="btn-ghost" onClick={onBack}>
-          <ArrowLeft size={16} /> 上一步
-        </button>
-        <button className="btn-primary" onClick={onNext}>
-          进入分镜编辑 <ChevronRight size={16} />
-        </button>
       </div>
     </div>
   );
@@ -550,6 +485,100 @@ function zhToLocal(zh) {
   return out;
 }
 
+// 已锁定素材的内嵌小图 chip（对齐参考图里 @图片1 那种）——在 contenteditable 中作为原子块（整体删）
+const CLONE_TOKENS = {
+  char: '<span class="sb-tok" contenteditable="false"><img src="frames/frame_05.jpg" alt="">@角色IP</span>',
+  scene: '<span class="sb-tok" contenteditable="false"><img src="frames/frame_01.jpg" alt="">@场景</span>',
+  ui: '<span class="sb-tok" contenteditable="false"><img src="frames/frame_04.jpg" alt="">@产品界面</span>',
+  keyframe: '<span class="sb-tok" contenteditable="false"><img src="frames/frame_03.jpg" alt="">@关键帧</span>',
+};
+
+// 把画面描述里的关键词替换成内嵌小图 chip（重复出现是刻意的，跟参考图一致）
+function injectCloneTokens(text) {
+  return text
+    .split('角色').join(CLONE_TOKENS.char)
+    .split('ATM').join(CLONE_TOKENS.scene)
+    .split('App界面').join(CLONE_TOKENS.ui)
+    .split('屏幕').join(CLONE_TOKENS.ui);
+}
+
+// 用户上传的替换参考图小图 chip（应用后织入设定段的「关键元素替换」一行）
+function refTok(img, label) {
+  return `<span class="sb-tok sb-tok-ref" contenteditable="false"><img src="${img.url}" alt="">${label}</span>`;
+}
+
+// 分镜关键帧：内嵌在提示词里、跟在对应镜头标题下方（原子块，整体删）
+// kfState: source = 源视频帧 | generating = 按参考图重生成中 | done = 已按参考图更新
+function kfImgHtml(s, i, state) {
+  const veil = state === 'generating' ? '<span class="sb-kfimg-veil"><span class="sb-kfimg-spin"></span></span>' : '';
+  const badge = state === 'done' ? '<span class="sb-kfimg-new">已更新</span>' : '';
+  return `<span class="sb-kfimg${state === 'done' ? ' sb-kfimg--new' : ''}" contenteditable="false">`
+    + `<span class="sb-kfimg-pic"><img src="${s.frameImg}" alt="镜头${i + 1}关键帧">${badge}${veil}</span>`
+    + `<span class="sb-kfimg-cap">镜头 ${i + 1} 关键帧 · ${s.time}</span></span>`;
+}
+
+// 把拆解出的镜头脚本拼成「可直接看着改」的提示词 HTML（对齐参考图「编辑提示词」大文本框 + @图片 chip）
+// refImages / instruction：用户在「关键元素替换」上传并应用后，织入设定与各镜头旁的参考图
+function buildClonePromptHtml(shots, region, refImages = [], instruction = '', kfState = 'source') {
+  const head = [
+    `一个用于抖音 / TikTok 短视频首屏吸睛的 14 秒高清克隆视频提示词。源视频为第一人称手机拍摄视角（9:16 竖屏），街头 ATM 场景、网赚题材，本地化到${region}。全片保持景别与原口型对齐，画面清晰、节奏紧凑。`,
+    '',
+    '### 视频整体设定',
+    '*   **格式**：9:16 竖屏，手机手持拍摄视角，画面自然轻微晃动，具真实生活感。',
+    `*   **场景风格**：${CLONE_TOKENS.scene}（已锁定），保持源视频的亮度 / 布光 / 真实感。`,
+    `*   **角色 IP**：${CLONE_TOKENS.char} ×2（已锁定），基于目标地区生成，全程保持一致。`,
+    `*   **产品 / 界面**：${CLONE_TOKENS.ui}（已锁定），手机屏幕展示 App 界面与到账画面。`,
+    `*   **景别 / 视角**：以 ${CLONE_TOKENS.keyframe}（关键帧参考）为基准，全片逐镜保持景别与镜头视角一致。`,
+    `*   **目标地区 / 语言**：${region}，金额用当地货币 R$。`,
+  ];
+  if (refImages.length) {
+    const toks = refImages.map((img, i) => refTok(img, `@图${i + 1}`)).join(' ');
+    const how = instruction.trim() || '按下方各镜头的画面需要，织入对应分镜替换关键元素。';
+    head.push(`*   **关键元素替换**：${toks} —— ${how}`);
+  }
+  head.push(
+    '',
+    '---',
+    '',
+    `### 分镜脚本（共 ${shots.length} 镜 · 约 14 秒）`,
+    '',
+  );
+  const body = [];
+  shots.forEach((s, i) => {
+    const tags = [s.angle];
+    if (s.keyframe) tags.push('关键帧');
+    if (s.money) tags.push('金额镜');
+    body.push(`**镜头 ${i + 1}（${s.time}）** · ${tags.join(' · ')}`);
+    body.push(kfImgHtml(s, i, kfState));
+    body.push(`*   **画面**：${injectCloneTokens(s.content)}`);
+    const lock = s.type === 'frozen' ? '冻结 · 跟原口型' : '改写 · 可本地化';
+    body.push(`*   **台词（${lock}）**：${s.line}`);
+    if (s.zh) body.push(`*   **中文对照**：${s.zh}`);
+    body.push('');
+  });
+  return head.concat(body).join('\n');
+}
+
+// 大文本编辑器：非受控 contenteditable —— 挂载时写入一次 HTML，之后交给浏览器原生编辑，
+// React 不参与其子节点 diff（避免受控 contenteditable 的光标/清空问题）。@图片 chip 为原子块。
+const PromptEditor = React.memo(function PromptEditor({ html, onCount }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (el) { el.innerHTML = html; onCount(el.innerText.length); }
+  }, [html]);
+  return (
+    <div
+      ref={ref}
+      className="sb-prompt"
+      contentEditable
+      suppressContentEditableWarning
+      spellCheck={false}
+      onInput={e => onCount(e.currentTarget.innerText.length)}
+    />
+  );
+});
+
 function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
   const langLabel = parseLangLabel(targetRegion);
   const initShots = [
@@ -577,375 +606,183 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
       refDesc: 'CTA收尾，角色正面', frameImg: 'frames/frame_08.jpg' },
   ];
 
-  const [shots, setShots] = useState(initShots);
-  const [expandedId, setExpandedId] = useState(null);
-  const [edited, setEdited] = useState({});        // id -> { zh, local } 台词编辑结果
-  const [unlocked, setUnlocked] = useState({});    // id -> 冻结台词是否已解锁
-  const [matching, setMatching] = useState({});    // id -> 是否正在匹配本地语言
-  const [refLoading, setRefLoading] = useState({});
-  const [regenPrompt, setRegenPrompt] = useState({}); // id -> 重新生成的补充要求
-  const [editedContent, setEditedContent] = useState({}); // id -> 用户改写的画面描述
-  const scrubDebounce = useRef({});
-  const matchDebounce = useRef({});
+  // 关键元素替换：用户自己上传 1–3 张参考图（素材库 / 本地 / AI 生图）+ 一句指令
+  const [refImages, setRefImages] = useState([]);   // { id, url }
+  const [instr, setInstr] = useState('');
+  const [applied, setApplied] = useState(false);
+  // 分镜关键帧：始终内嵌在提示词各镜头下；应用参考图后原位重生成一版供对照检查
+  const [genState, setGenState] = useState('idle'); // idle | generating | done
+  // 上传弹窗：素材库 / 本地上传 / AI 生图 三合一
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadTab, setUploadTab] = useState('library');  // library | local | ai
+  const [localImgs, setLocalImgs] = useState([]);   // 本地上传的图：先进预览区（默认勾选），确认后点完成
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiGens, setAiGens] = useState([]);   // 生成结果：输入框上方从左到右排开，点选即采用
+  const aiToastOnce = useRef(false);
+  const [toast, setToast] = useState(null);
+  // 素材库：预置素材 + AI 生成后存入的（可变），aiGenSet 记录哪些是 AI 生成用于打标
+  const [libraryImgs, setLibraryImgs] = useState(['frames/frame_09.jpg', 'frames/frame_02.jpg', 'frames/frame_06.jpg', 'frames/frame_07.jpg', 'frames/frame_08.jpg', 'frames/frame_03.jpg']);
+  const [aiGenSet, setAiGenSet] = useState(() => new Set());
+  const refInputRef = useRef();
+  const urlsRef = useRef([]);
+  const toastRef = useRef();
+  useEffect(() => () => { urlsRef.current.forEach(URL.revokeObjectURL); clearTimeout(toastRef.current); }, []);
+  // 弹窗打开时支持 Esc 关闭
+  useEffect(() => {
+    if (!uploadOpen) return;
+    const onKey = e => { if (e.key === 'Escape') setUploadOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [uploadOpen]);
 
-  const keyframeCount = shots.filter(s => s.keyframe).length;
-  const maxKeyframes = 9;
+  const aiResults = ['frames/frame_04.jpg', 'frames/frame_05.jpg', 'frames/frame_01.jpg'];
 
-  const toggleKeyframe = (id) => {
-    setShots(prev => prev.map(s => {
-      if (s.id !== id) return s;
-      if (s.keyframe) return { ...s, keyframe: false, refVersion: 0 };
-      if (keyframeCount >= maxKeyframes) return s;
-      setRefLoading(rl => ({ ...rl, [id]: true }));
-      setTimeout(() => {
-        setRefLoading(rl => ({ ...rl, [id]: false }));
-        setShots(p => p.map(x => x.id === id ? { ...x, refVersion: (x.refVersion || 0) + 1 } : x));
-      }, 1500);
-      return { ...s, keyframe: true };
-    }));
-  };
+  function showToast(msg) {
+    setToast(msg);
+    clearTimeout(toastRef.current);
+    toastRef.current = setTimeout(() => setToast(null), 3500);
+  }
 
-  const regenerateRef = (id) => {
-    setRefLoading(rl => ({ ...rl, [id]: true }));
-    setTimeout(() => {
-      setRefLoading(rl => ({ ...rl, [id]: false }));
-      setShots(prev => prev.map(s => s.id === id ? { ...s, refVersion: (s.refVersion || 0) + 1 } : s));
-    }, 1500);
-  };
+  // 任何输入变化都让上一版「应用 / 分镜参考图」作废，提示用户重新生成
+  function invalidate() { setApplied(false); setGenState('idle'); }
 
-  const seekKeyframe = (id, newMs) => {
-    const frameIndex = Math.min(9, Math.max(1, Math.round((newMs / 15000) * 9)));
-    const newFrameImg = `frames/frame_${String(frameIndex).padStart(2, '0')}.jpg`;
-    setShots(prev => prev.map(s => s.id === id ? { ...s, kfMs: newMs, frameImg: newFrameImg } : s));
-    clearTimeout(scrubDebounce.current[id]);
-    scrubDebounce.current[id] = setTimeout(() => regenerateRef(id), 800);
-  };
-
-  const toggleExpand = (id) => {
-    setExpandedId(expandedId === id ? null : id);
-  };
-
-  // 输入中文，防抖后自动匹配目标语言展示
-  const applyZh = (id, zhVal) => {
-    setEdited(prev => ({ ...prev, [id]: { zh: zhVal, local: prev[id]?.local ?? '' } }));
-    setMatching(m => ({ ...m, [id]: true }));
-    clearTimeout(matchDebounce.current[id]);
-    matchDebounce.current[id] = setTimeout(() => {
-      const local = zhToLocal(zhVal);
-      setEdited(prev => ({ ...prev, [id]: { zh: zhVal, local } }));
-      setMatching(m => ({ ...m, [id]: false }));
-    }, 450);
-  };
-
-  // 选中一条重写方案：直接给定中文 + 本地语言，取消匹配中状态
-  const pickRewrite = (id, zhVal, localVal) => {
-    clearTimeout(matchDebounce.current[id]);
-    setMatching(m => ({ ...m, [id]: false }));
-    setEdited(prev => ({ ...prev, [id]: { zh: zhVal, local: localVal } }));
-  };
-
-  // 冻结台词解锁编辑；锁回则还原 AI 的原始冻结台词
-  const unlockFrozen = (id, s) => {
-    setUnlocked(u => ({ ...u, [id]: true }));
-    setEdited(prev => prev[id] ? prev : { ...prev, [id]: { zh: s.zh, local: s.line } });
-  };
-  const relockFrozen = (id) => {
-    setUnlocked(u => ({ ...u, [id]: false }));
-    setMatching(m => ({ ...m, [id]: false }));
-    setEdited(prev => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
+  function addImageFromUrl(url) {
+    setRefImages(prev => (prev.length >= 3 || prev.some(x => x.url === url)) ? prev : [...prev, { id: `${Date.now()}-${Math.random()}`, url }]);
+    invalidate();
+  }
+  // 本地上传：先进弹窗预览区（与素材库同款网格），有空位的默认勾选，用户看过确认后再点完成
+  function addLocalImages(files) {
+    const picked = Array.from(files);   // 同步快照：input.value 清空会清掉 live FileList
+    const next = picked.map(f => {
+      const url = URL.createObjectURL(f);
+      urlsRef.current.push(url);
+      return { id: `${Date.now()}-${Math.random()}`, url };
     });
-  };
+    setLocalImgs(prev => [...prev, ...next]);
+    setRefImages(prev => {
+      const room = 3 - prev.length;
+      return [...prev, ...next.slice(0, room).map(x => ({ id: `ref-${x.id}`, url: x.url }))];
+    });
+    invalidate();
+  }
+  function removeRefImage(id) {
+    setRefImages(prev => prev.filter(x => x.id !== id));
+    invalidate();
+  }
+  function removeRefByUrl(url) {
+    setRefImages(prev => prev.filter(x => x.url !== url));
+    invalidate();
+  }
+  // AI 生图：结果排在输入框上方（左→右），不采用就只是预览；点选 = 采用（选用为参考图 + 存入素材库）
+  function aiGenerate() {
+    if (!aiPrompt.trim() || aiBusy) return;
+    const url = aiResults.find(u => !aiGens.includes(u));
+    if (!url) { showToast('Demo 示例图已全部生成，点选上方图片即可采用'); return; }
+    setAiBusy(true);
+    setTimeout(() => {
+      setAiGens(prev => [...prev, url]);
+      setAiBusy(false);
+    }, 1300);
+  }
+  function aiAdopt(url) {
+    addImageFromUrl(url);   // 勾选 = 采用为参考图
+    setLibraryImgs(prev => prev.includes(url) ? prev : [url, ...prev]);   // 同时存入素材库便于复用
+    setAiGenSet(prev => new Set(prev).add(url));
+    if (!aiToastOnce.current) { aiToastOnce.current = true; showToast('已采用，并已存入素材库'); }
+  }
 
-  // 画面描述可编辑：AI 拆解不准时用户自己写（支持长文本 / 换行）
-  const applyContent = (id, val) => setEditedContent(prev => ({ ...prev, [id]: val }));
+  // 整段可直接编辑的提示词（挂载时生成 HTML，之后用户看着改；@图片 chip 为原子块）
+  const [promptHtml, setPromptHtml] = useState(() => buildClonePromptHtml(initShots, targetRegion));
+  const [charCount, setCharCount] = useState(0);
+  // 应用：把参考图 + 指令织入提示词，并把各镜头下的关键帧原位重生成一版供对照检查
+  function applyAndGenerate() {
+    if (!refImages.length) return;
+    setApplied(true);
+    setGenState('generating');
+    setPromptHtml(buildClonePromptHtml(initShots, targetRegion, refImages, instr, 'generating'));
+    setTimeout(() => {
+      setGenState('done');
+      setPromptHtml(buildClonePromptHtml(initShots, targetRegion, refImages, instr, 'done'));
+    }, 1400);
+  }
 
   return (
-    <div className="step-content">
-      <div className="storyboard-header">
-        <span className="keyframe-counter">
-          <Image size={14} /> 已选关键帧 {keyframeCount}/{maxKeyframes}
-        </span>
-        <span className="storyboard-hint">点击行展开编辑台词和调整关键帧</span>
-      </div>
-
-      <div className="shot-card-list">
-        {shots.map(s => {
-          const isExpanded = expandedId === s.id;
-          const isLoading = refLoading[s.id];
-          const eff = edited[s.id];
-          const effLocal = eff?.local ?? s.line;
-          const effZh = eff?.zh ?? s.zh;
-          const isChanged = !!eff && (eff.local !== s.line || eff.zh !== s.zh);
-          const isUnlocked = !!unlocked[s.id];
-          const isMatching = !!matching[s.id];
-          const effContent = editedContent[s.id] ?? s.content;
-          return (
-            <div key={s.id} className={`shot-card ${s.money ? 'shot-card--money' : ''} ${isExpanded ? 'shot-card--expanded' : ''}`}>
-              <div className="shot-card-row" onClick={() => toggleExpand(s.id)}>
-                <div className="shot-card-col">
-                  <div className={`shot-ref-thumb ${s.keyframe ? '' : 'shot-ref-thumb--plain'} ${isLoading ? 'shot-ref-thumb--loading' : ''}`}>
-                    {s.frameImg ? (
-                      <img src={s.frameImg} alt="" className="shot-ref-img" />
-                    ) : (
-                      isLoading ? <Loader2 size={16} className="spinner" /> : <Camera size={18} strokeWidth={1.2} />
-                    )}
-                    {s.keyframe && <span className="shot-ref-kf" title="关键帧"><Image size={10} /></span>}
-                    {isLoading && s.frameImg && <div className="shot-ref-loading"><Loader2 size={16} className="spinner" /></div>}
-                  </div>
-                </div>
-                <div className="shot-card-col">
-                  <div className="shot-card-time">{s.time}</div>
-                  <div className="shot-card-meta">
-                    <div className="shot-card-content">{effContent}</div>
-                    <div className="shot-card-angle">{s.angle}</div>
-                  </div>
-                </div>
-                <div className="shot-card-col">
-                  <div className="shot-card-line">
-                    <span className={(s.type === 'rewrite' || isChanged) ? 'rewrite-text' : 'frozen-text'}>
-                      {effLocal}
-                    </span>
-                    <span className="shot-card-zh">{effZh}</span>
-                  </div>
-                </div>
-                <div className="shot-card-col shot-card-col--actions">
-                  {isChanged && <span className="edited-pill">已改台词</span>}
-                  <button className="toggle-btn" onClick={e => { e.stopPropagation(); toggleKeyframe(s.id); }}
-                    disabled={!s.keyframe && keyframeCount >= maxKeyframes}
-                    title={s.keyframe ? '关闭关键帧' : '开启关键帧'}>
-                    {s.keyframe
-                      ? <ToggleRight size={20} className="toggle-on" />
-                      : <ToggleLeft size={20} className="toggle-off" />}
-                  </button>
-                  <ChevronDown size={14} className={`shot-card-chevron ${isExpanded ? 'rotated' : ''}`} />
-                </div>
-              </div>
-
-              {isExpanded && (
-                <div className="shot-expand">
-                  <div className="shot-expand-sections">
-                    {/* 画面：AI 拆解描述，可编辑（支持长文本 / 换行） */}
-                    <div className="shot-expand-scene">
-                      <div className="shot-expand-label">
-                        <Film size={13} />
-                        <span>画面</span>
-                        <span className="scene-sub">AI 拆解描述，拆得不准可自行修改</span>
-                      </div>
-                      <textarea className="scene-input" rows={2}
-                        value={effContent}
-                        placeholder="描述这一镜的画面，例如：宝妈一只手抱着一岁大的孩子，另一只手举着手机，表情热情真诚"
-                        onClick={e => e.stopPropagation()}
-                        onChange={e => applyContent(s.id, e.target.value)} />
-                    </div>
-
-                    {/* 参考图：放大双图对比 + 右侧控制列（帧定位 / 元信息 / 重新生成） */}
-                    <div className="shot-expand-ref">
-                      <div className="shot-expand-label">
-                        <Image size={13} />
-                        <span>参考图</span>
-                        <span className={`kf-status ${s.keyframe ? 'kf-on' : 'kf-off'}`}>
-                          {s.keyframe ? '关键帧已开启' : '关键帧未开启'}
-                        </span>
-                      </div>
-                      {s.keyframe ? (
-                        <div className="ref-editor">
-                          <div className="ref-editor-images">
-                            <div className="ref-compare-col ref-compare-col--lg">
-                              <span className="compare-label">原帧 @ {formatMs(s.kfMs)}</span>
-                              <div className="ref-thumb">
-                                {s.frameImg ? (
-                                  <img src={s.frameImg} alt="" className="ref-thumb-img" />
-                                ) : (
-                                  <><Camera size={26} strokeWidth={1} /><span className="ref-thumb-text">{s.angle}</span></>
-                                )}
-                              </div>
-                            </div>
-                            <ChevronRight size={18} className="compare-arrow" />
-                            <div className="ref-compare-col ref-compare-col--lg">
-                              <span className="compare-label">合成参考图 {isLoading ? '' : `V${s.refVersion}`}</span>
-                              <div className={`ref-thumb ref-thumb--new ${isLoading ? 'ref-thumb--loading' : ''}`}>
-                                {isLoading ? (
-                                  <><Loader2 size={22} className="spinner" /><span className="ref-thumb-text">生成中...</span></>
-                                ) : s.frameImg ? (
-                                  <><img src={s.frameImg} alt="" className="ref-thumb-img ref-thumb-img--synth" /><span className="ref-thumb-overlay">{s.refDesc}</span></>
-                                ) : (
-                                  <><Sparkles size={26} strokeWidth={1} /><span className="ref-thumb-text">{s.refDesc}</span></>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="ref-editor-controls">
-                            <div className="kf-scrubber">
-                              <div className="kf-scrubber-label">
-                                <Clock size={12} />
-                                <span>帧定位</span>
-                                <span className="kf-time-display">{formatMs(s.kfMs)}</span>
-                              </div>
-                              <div className="kf-scrubber-track-wrap">
-                                <span className="kf-scrubber-bound">{formatMs(s.startMs)}</span>
-                                <div className="kf-scrubber-track">
-                                  <div className="kf-scrubber-fill" style={{ width: `${((s.kfMs - s.startMs) / (s.endMs - s.startMs)) * 100}%` }} />
-                                  <div className="kf-scrubber-ticks">
-                                    {Array.from({ length: 10 }).map((_, i) => (
-                                      <div key={i} className="kf-tick" />
-                                    ))}
-                                  </div>
-                                  <input type="range"
-                                    className="kf-scrubber-input"
-                                    min={s.startMs} max={s.endMs} step={100}
-                                    value={s.kfMs}
-                                    onChange={e => seekKeyframe(s.id, Number(e.target.value))}
-                                    onClick={e => e.stopPropagation()} />
-                                </div>
-                                <span className="kf-scrubber-bound">{formatMs(s.endMs)}</span>
-                              </div>
-                              <p className="kf-scrubber-hint">拖动滑块定位关键帧，松手后自动刷新参考图</p>
-                            </div>
-
-                            <div className="ref-meta-compact">
-                              <span className="ref-meta-item"><span className="ref-meta-k">镜头</span>{s.angle}</span>
-                              <span className="ref-meta-item ref-meta-item--desc"><span className="ref-meta-k">描述</span>{s.refDesc}</span>
-                            </div>
-
-                            <div className="ref-regen">
-                              <div className="ref-regen-label"><Sparkles size={12} /> 补充生成要求（可选）</div>
-                              <div className="ref-regen-row">
-                                <input className="ref-regen-input"
-                                  placeholder="如：手机屏幕更亮、换成白天、人物靠近镜头"
-                                  value={regenPrompt[s.id] || ''}
-                                  onChange={e => setRegenPrompt(p => ({ ...p, [s.id]: e.target.value }))}
-                                  onClick={e => e.stopPropagation()}
-                                  disabled={isLoading} />
-                                <button className="btn-primary btn-sm" onClick={() => regenerateRef(s.id)} disabled={isLoading}>
-                                  <RefreshCw size={13} /> 重新生成
-                                </button>
-                              </div>
-                              <div className="ref-actions">
-                                <button className="btn-outline btn-sm" disabled={isLoading}>
-                                  <Upload size={13} /> 上传替代
-                                </button>
-                                <button className="btn-ghost btn-sm" onClick={e => { e.stopPropagation(); toggleKeyframe(s.id); }}>
-                                  <ToggleLeft size={13} /> 关闭关键帧
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="ref-off-hint">
-                          <p>该镜头未设为关键帧，生成时靠 prompt 文字描述 + 相邻参考图自然过渡</p>
-                          <button className="btn-outline btn-sm"
-                            onClick={e => { e.stopPropagation(); toggleKeyframe(s.id); }}
-                            disabled={keyframeCount >= maxKeyframes}>
-                            <ToggleRight size={13} /> 开启关键帧并生成参考图
-                            {keyframeCount >= maxKeyframes && <span className="ref-limit-hint">（已达上限 {maxKeyframes}）</span>}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* 台词：冻结可解锁修改 + 输入中文实时匹配本地语言 */}
-                    <div className="shot-expand-script">
-                      <div className="shot-expand-label">
-                        <MessageSquare size={13} />
-                        <span>台词</span>
-                        {s.type === 'frozen' ? (
-                          <span className={`kf-status ${isUnlocked ? 'kf-on' : 'kf-off'}`}>
-                            {isUnlocked ? '已解锁' : '冻结'}
-                          </span>
-                        ) : (
-                          <span className="kf-status kf-on">可改写</span>
-                        )}
-                      </div>
-
-                      {s.type === 'frozen' && (
-                        <div className={`script-lock-bar ${isUnlocked ? 'is-unlocked' : ''}`}>
-                          <div className="script-lock-info">
-                            {isUnlocked ? <Unlock size={13} /> : <Lock size={13} />}
-                            <span>{isUnlocked
-                              ? '已解锁，可手动修改（将脱离原口型对齐，请谨慎）'
-                              : 'AI 判定为冻结台词，与原音轨 / 口型对齐'}</span>
-                          </div>
-                          <button className="lock-toggle-btn"
-                            onClick={e => { e.stopPropagation(); isUnlocked ? relockFrozen(s.id) : unlockFrozen(s.id, s); }}>
-                            {isUnlocked
-                              ? <ToggleRight size={20} className="toggle-on" />
-                              : <ToggleLeft size={20} className="toggle-off" />}
-                            <span>允许修改</span>
-                          </button>
-                        </div>
-                      )}
-
-                      {(s.type === 'frozen' && !isUnlocked) ? (
-                        <div className="script-frozen">
-                          <p className="script-frozen-text">{s.line}</p>
-                          <p className="script-zh-text">{s.zh}</p>
-                        </div>
-                      ) : (
-                        <div className="script-edit">
-                          {s.type === 'rewrite' && (
-                            <>
-                              <div className="script-original-row">
-                                <span className="rewrite-label">原台词</span>
-                                <span className="script-original-line">{s.line}</span>
-                                <span className="script-original-zh">{s.zh}</span>
-                              </div>
-                              <span className="rewrite-label">选择重写方案：</span>
-                              <div className="rewrite-options">
-                                {s.rewrites.map((rw, ri) => (
-                                  <label key={ri} className="rewrite-option">
-                                    <input type="radio" name={`rw-${s.id}`}
-                                      checked={effLocal === rw}
-                                      onChange={() => pickRewrite(s.id, s.rewritesZh?.[ri] || effZh, rw)} />
-                                    <div className="rewrite-option-text">
-                                      <span>{rw}</span>
-                                      <span className="rewrite-option-zh">{s.rewritesZh?.[ri] || ''}</span>
-                                    </div>
-                                  </label>
-                                ))}
-                              </div>
-                            </>
-                          )}
-
-                          {/* 双语实时编辑：输入中文 → 自动匹配本地语言 */}
-                          <div className="bi-editor">
-                            <div className="bi-field">
-                              <label className="bi-label">
-                                <Pencil size={11} /> 中文台词
-                                <span className="bi-sub">输入后自动匹配 {langLabel}</span>
-                              </label>
-                              <textarea className="bi-zh" rows={2} value={effZh}
-                                placeholder="输入中文台词..."
-                                onClick={e => e.stopPropagation()}
-                                onChange={e => applyZh(s.id, e.target.value)} />
-                            </div>
-                            <div className="bi-local-field">
-                              <label className="bi-label">
-                                <Languages size={11} /> {langLabel}
-                                <span className={`bi-match ${isMatching ? 'is-matching' : ''}`}>
-                                  {isMatching
-                                    ? <><Loader2 size={10} className="spinner" /> 匹配中…</>
-                                    : <><Check size={10} /> 已匹配</>}
-                                </span>
-                              </label>
-                              <div className="bi-local">
-                                {effLocal ? effLocal : <span className="bi-local-empty">等待输入中文…</span>}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+    <div className="step-content sb-step">
+      <div className="sb-layout">
+        {/* 顶排：参考视频（紧凑卡片，与右侧输入框同高）+ 上下文补充 */}
+        <div className="sb-top">
+          <section className="sb-block sb-top-video">
+            <div className="sb-block-head">
+              <span className="sb-block-title">参考视频</span>
             </div>
-          );
-        })}
+            <div className="sb-refvideo">
+              <div className="sb-refvideo-thumb">
+                <img src="frames/frame_01.jpg" alt="" />
+                <button className="sb-refvideo-play" title="预览源视频"><Play size={13} /></button>
+              </div>
+              <div className="sb-refvideo-meta">
+                <span className="sb-refvideo-name"><FileVideo size={13} /> source.mp4</span>
+                <span className="sb-refvideo-sub">0:14 · {initShots.length} 镜</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="sb-block sb-top-kel">
+            <div className="sb-block-head">
+              <span className="sb-block-title">上下文补充</span>
+              <span className="sb-block-meta">选填 · 图片织入提示词并生成分镜参考图</span>
+            </div>
+            {/* 一体式输入框：附件在上、指令居中、右下角操作 */}
+            <div className="sb-kel">
+              <div className="sb-kel-imgs">
+                {refImages.map((img, i) => (
+                  <div key={img.id} className="sb-kel-thumb">
+                    <img src={img.url} alt={`参考图 ${i + 1}`} />
+                    <button className="sb-kel-del" onClick={() => removeRefImage(img.id)} aria-label={`移除参考图 ${i + 1}`}>
+                      <X size={11} />
+                    </button>
+                    <span className="sb-kel-idx">图 {i + 1}</span>
+                  </div>
+                ))}
+                {refImages.length < 3 && (
+                  <button className="sb-kel-add" onClick={() => setUploadOpen(true)}>
+                    <ImagePlus size={16} strokeWidth={1.5} />
+                    <span>上传</span>
+                  </button>
+                )}
+                <input ref={refInputRef} type="file" accept="image/*" multiple hidden
+                  onChange={e => { addLocalImages(e.target.files); e.target.value = ''; }} />
+              </div>
+              <textarea className="sb-kel-input" rows={2} value={instr}
+                onChange={e => { setInstr(e.target.value); invalidate(); }}
+                placeholder="补充上下文：这些图怎么用（例：@图1 换成新角色贯穿全片，@图2 作为手机里展示的产品）。留空则按脚本自动套用。" />
+              <div className="sb-kel-foot">
+                <span className="sb-kel-hint">
+                  {refImages.length ? `已选 ${refImages.length} / 3 张` : '上传 1–3 张人物或产品图（选填）'}
+                </span>
+                <button className="sb-kel-apply" disabled={!refImages.length || genState === 'generating'} onClick={applyAndGenerate}>
+                  {genState === 'generating'
+                    ? <><Loader2 size={14} className="spinner" /> 生成中…</>
+                    : <><Sparkles size={14} /> 应用并生成参考图</>}
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* 编辑提示词：全宽，分镜关键帧图逐镜嵌在对应脚本下方 */}
+        <section className="sb-block">
+          <div className="sb-block-head">
+            <span className="sb-block-title">编辑提示词</span>
+            <span className="sb-block-meta">
+              {genState === 'generating' && <><Loader2 size={11} className="spinner" /> 分镜关键帧生成中 · </>}
+              {genState === 'done' && `${initShots.length} 镜关键帧已按参考图更新 · `}
+              {charCount} 字 · 直接改文字即可
+            </span>
+          </div>
+          <PromptEditor html={promptHtml} onCount={setCharCount} />
+        </section>
       </div>
 
       <div className="step-actions">
@@ -956,6 +793,110 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
           <Sparkles size={16} /> 确认无误，开始生成
         </button>
       </div>
+
+      {/* 上传参考图弹窗：素材库 / 本地上传 / AI 生图 三合一 */}
+      {uploadOpen && (
+        <div className="up-dialog-overlay" onClick={() => setUploadOpen(false)}>
+          <div className="up-dialog" role="dialog" aria-modal="true" aria-label="添加参考图" onClick={e => e.stopPropagation()}>
+            <div className="up-dialog-head">
+              <span className="up-dialog-title">添加参考图 <em>{refImages.length}/3</em></span>
+              <button className="up-dialog-x" onClick={() => setUploadOpen(false)} aria-label="关闭"><X size={16} /></button>
+            </div>
+            <div className="up-tabs" role="tablist">
+              <button role="tab" aria-selected={uploadTab === 'library'} className={`up-tab ${uploadTab === 'library' ? 'active' : ''}`} onClick={() => setUploadTab('library')}><LayoutGrid size={14} /> 素材库</button>
+              <button role="tab" aria-selected={uploadTab === 'local'} className={`up-tab ${uploadTab === 'local' ? 'active' : ''}`} onClick={() => setUploadTab('local')}><Upload size={14} /> 本地上传</button>
+              <button role="tab" aria-selected={uploadTab === 'ai'} className={`up-tab ${uploadTab === 'ai' ? 'active' : ''}`} onClick={() => setUploadTab('ai')}><Sparkles size={14} /> AI 生图</button>
+            </div>
+            <div className="up-body">
+              {uploadTab === 'library' && (
+                <div className="up-lib">
+                  {libraryImgs.map(src => {
+                    const picked = refImages.some(r => r.url === src);
+                    return (
+                      <button key={src} className={`up-lib-item ${picked ? 'picked' : ''}`} disabled={refImages.length >= 3 && !picked}
+                        onClick={() => picked ? removeRefByUrl(src) : addImageFromUrl(src)}>
+                        <img src={src} alt="" />
+                        {aiGenSet.has(src) && <span className="up-lib-ai">AI</span>}
+                        {picked && <span className="up-lib-check"><Check size={12} /></span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              {uploadTab === 'local' && (
+                localImgs.length === 0 ? (
+                  <button className="up-drop" onClick={() => refInputRef.current?.click()}>
+                    <Upload size={22} strokeWidth={1.5} />
+                    <span className="up-drop-title">点击选择本地图片</span>
+                    <span className="up-drop-hint">JPG / PNG · 选择后先在这里预览确认，再点完成</span>
+                  </button>
+                ) : (
+                  <div className="up-lib">
+                    {localImgs.map(img => {
+                      const picked = refImages.some(r => r.url === img.url);
+                      return (
+                        <button key={img.id} className={`up-lib-item ${picked ? 'picked' : ''}`}
+                          disabled={refImages.length >= 3 && !picked}
+                          title={picked ? '取消选用' : '选用这张图'}
+                          onClick={() => picked ? removeRefByUrl(img.url) : addImageFromUrl(img.url)}>
+                          <img src={img.url} alt="" />
+                          {picked && <span className="up-lib-check"><Check size={12} /></span>}
+                        </button>
+                      );
+                    })}
+                    <button className="up-lib-add" onClick={() => refInputRef.current?.click()}>
+                      <ImagePlus size={18} strokeWidth={1.5} />
+                      <span>继续添加</span>
+                    </button>
+                  </div>
+                )
+              )}
+              {uploadTab === 'ai' && (
+                <div className="up-ai">
+                  {(aiGens.length > 0 || aiBusy) && (
+                    <div className="up-ai-gens">
+                      {aiGens.map((url, i) => {
+                        const picked = refImages.some(r => r.url === url);
+                        return (
+                          <button key={url} className={`up-ai-gen ${picked ? 'picked' : ''}`}
+                            disabled={refImages.length >= 3 && !picked}
+                            title={picked ? '取消采用' : '点选采用（自动存入素材库）'}
+                            onClick={() => picked ? removeRefByUrl(url) : aiAdopt(url)}>
+                            <img src={url} alt={`生成结果 ${i + 1}`} />
+                            {picked && <span className="up-lib-check"><Check size={12} /></span>}
+                          </button>
+                        );
+                      })}
+                      {aiBusy && (
+                        <div className="up-ai-gen up-ai-gen--busy">
+                          <Loader2 size={15} className="spinner" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <textarea className="up-ai-input" rows={2} value={aiPrompt} onChange={e => setAiPrompt(e.target.value)}
+                    placeholder="描述想要的人物 / 产品图，例：巴西年轻男性，手持手机，街头自拍，暖色调" />
+                  <div className="up-ai-foot">
+                    <span className="up-ai-hint">
+                      {aiGens.length ? '点选图片即采用（自动存入素材库），再点取消' : '生成的图片会排在上方，点选即采用'}
+                    </span>
+                    <button className="sb-kel-apply" disabled={!aiPrompt.trim() || aiBusy} onClick={aiGenerate}>
+                      {aiBusy
+                        ? <><Loader2 size={14} className="spinner" /> 生成中…</>
+                        : <><Sparkles size={14} /> {aiGens.length ? '再生成一张' : '生成图片'}</>}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="up-foot">
+              <span className="up-foot-hint">已选 {refImages.length} / 3 张</span>
+              <button className="btn-primary" onClick={() => setUploadOpen(false)}>完成</button>
+            </div>
+            {toast && <div className="up-toast"><CheckCircle2 size={14} /> {toast}</div>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
