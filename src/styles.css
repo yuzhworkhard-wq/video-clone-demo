@@ -3539,7 +3539,7 @@ body {
   clear: right;
   position: relative;
   display: block;
-  width: 88px;   /* 高 ~156px：贴住左侧一镜文案段（最小 ~173px）的高度，浮块总高须小于段高才能逐镜锚定 */
+  width: 80px;   /* 高 ~142px：贴左侧文案段高（最小 ~173px）但留 ~33px 图间距；浮块总高须小于段高才能逐镜锚定 */
   aspect-ratio: 9 / 16;
   margin: 3px 0 8px 18px;
   overflow: hidden;
