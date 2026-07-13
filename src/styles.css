@@ -3298,8 +3298,8 @@ body {
 .sb-tok-speaker--txt {
   padding-left: 6px;
   border: 1px solid transparent;
-  background: rgba(255, 255, 255, 0.2);
-  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 .sb-tok-speaker--txt svg { flex-shrink: 0; opacity: 0.85; }
 /* 分镜关键帧 chip（中性色，区别于 @素材）；上传的替换参考图 chip 沿用 accent 基色 */
