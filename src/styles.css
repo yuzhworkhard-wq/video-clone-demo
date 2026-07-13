@@ -3292,10 +3292,14 @@ body {
   border-radius: 3px;
   flex-shrink: 0;
 }
-/* 说话者 chip：有参考图 = 头像 + 外号（引用图片）；无图 = 虚线 + 人形图标（按文字描述生成兜底） */
+/* 说话者 chip 两种形态要一眼可分：
+   有参考图 = 紫色实线 + 头像（跟 @图片 素材引用同语义）；
+   无参考图 = 中性灰虚线 + 人形图标（按文字描述生成兜底，不占用「引用素材」的紫色） */
 .sb-tok-speaker--txt {
   padding-left: 6px;
-  border-style: dashed;
+  border: 1px dashed var(--border-light);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
 }
 .sb-tok-speaker--txt svg { flex-shrink: 0; opacity: 0.85; }
 /* 分镜关键帧 chip（中性色，区别于 @素材）；上传的替换参考图 chip 沿用 accent 基色 */

@@ -413,6 +413,13 @@ function parseLangLabel(region) {
   return m ? m[1] : region.trim();
 }
 
+// 目标地区 → 说话语言标签（对齐参考图「语言：印尼语 (Indonesian)」的写法）
+const REGION_LANG = { 'pt-BR': '葡萄牙语 (Português)', 'id-ID': '印尼语 (Indonesian)', 'es-MX': '西班牙语 (Español)' };
+function regionLangLabel(region) {
+  const code = parseLangLabel(region);
+  return REGION_LANG[code] || code;
+}
+
 // Demo 用的轻量「中文→本地语言(pt-BR)」短语匹配表：覆盖脚本常用词，
 // 命中优先长短语，未命中的字保持原样（真实产品此处应接翻译/改写模型）。
 const ZH_LOCAL_DICT = [
@@ -576,7 +583,7 @@ function buildClonePromptHtml(shots, region, refImages = [], instruction = '', k
     body.push(`*   **镜头 / 景别（冻结）**：${s.angle}；${s.comp}。`);
     body.push(`*   **画面描述**：${injectCloneTokens(s.content)}。`);
     body.push(`*   **角色动作**：${s.action}。`);
-    body.push(`*   **说话者**：${speakerTok(s.speaker)}${s.speakerNote ? `（${s.speakerNote}）` : ''}`);
+    body.push(`*   **说话者**：${speakerTok(s.speaker)}${s.speakerNote ? `（${s.speakerNote}）` : ''} · **语言**：${regionLangLabel(region)}`);
     const lock = s.type === 'frozen' ? '冻结 · 跟原口型' : '改写 · 可本地化';
     body.push(`*   **台词（${lock}）**：${s.line}${s.zh ? `（中文对照：${s.zh}）` : ''}`);
     body.push(`*   **环境音说明**：${s.ambient}。`);
