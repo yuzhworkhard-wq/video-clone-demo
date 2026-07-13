@@ -3297,9 +3297,9 @@ body {
    无参考图 = 中性灰虚线 + 人形图标（按文字描述生成兜底，不占用「引用素材」的紫色） */
 .sb-tok-speaker--txt {
   padding-left: 6px;
-  border: 1px dashed var(--border-light);
-  background: var(--bg-elevated);
-  color: var(--text-secondary);
+  border: 1px dashed rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
 }
 .sb-tok-speaker--txt svg { flex-shrink: 0; opacity: 0.85; }
 /* 分镜关键帧 chip（中性色，区别于 @素材）；上传的替换参考图 chip 沿用 accent 基色 */
