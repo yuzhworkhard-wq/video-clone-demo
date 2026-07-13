@@ -503,7 +503,7 @@ const SPEAKERS = {
 };
 function speakerTok(key) {
   const sp = SPEAKERS[key];
-  if (sp.img) return `<span class="sb-tok sb-tok-speaker" contenteditable="false"><img src="${sp.img}" alt="">${sp.name}</span>`;
+  if (sp.img) return `<span class="sb-tok sb-tok-speaker" contenteditable="false"><img src="${sp.img}" alt="">@${sp.name}</span>`;
   return `<span class="sb-tok sb-tok-speaker sb-tok-speaker--txt" contenteditable="false">${SPEAKER_FALLBACK_ICON}${sp.name}</span>`;
 }
 

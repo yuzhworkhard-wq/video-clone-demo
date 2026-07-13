@@ -3293,12 +3293,12 @@ body {
   flex-shrink: 0;
 }
 /* 说话者 chip 两种形态要一眼可分：
-   有参考图 = 紫色实线 + 头像（跟 @图片 素材引用同语义）；
-   无参考图 = 中性灰虚线 + 人形图标（按文字描述生成兜底，不占用「引用素材」的紫色） */
+   有参考图 = 紫色 + 头像 + @外号（跟 @图片 素材引用同语义）；
+   无参考图 = 实底灰白 + 人形图标 + 外号不带 @（按文字描述生成兜底，样式对齐用户参考图的 @图片1 chip） */
 .sb-tok-speaker--txt {
   padding-left: 6px;
-  border: 1px dashed rgba(255, 255, 255, 0.38);
-  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.2);
   color: var(--text-primary);
 }
 .sb-tok-speaker--txt svg { flex-shrink: 0; opacity: 0.85; }
