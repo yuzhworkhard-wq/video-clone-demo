@@ -549,12 +549,13 @@ body {
   max-width: 520px;
 }
 
-/* 上传卡片（虚线空态） */
+/* 上传卡片（虚线空态）；flex:1 撑满右栏（链接解析区去掉后高度让给它） */
 .upload-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  flex: 1;
   gap: 12px;
   min-height: 300px;
   padding: 32px 24px;
@@ -592,6 +593,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 1;
   min-height: 300px;
   border: 1.5px solid var(--accent);
   border-radius: 14px;
@@ -690,53 +692,23 @@ body {
 }
 .upload-panel-delete:hover { background: rgba(10, 11, 11, 0.88); }
 
-/* 「或使用链接」分隔线 */
-.upload-or {
+/* 素材要求提示行（居中一排，安静的 icon + 文案） */
+.upload-tips {
   display: flex;
   align-items: center;
-  gap: 14px;
-  color: var(--text-muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  justify-content: center;
+  gap: 28px;
+  flex-wrap: wrap;
 }
-.upload-or::before, .upload-or::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-/* 链接输入 */
-.upload-link { position: relative; display: flex; align-items: center; }
-.upload-link-icon { position: absolute; left: 12px; color: var(--text-muted); pointer-events: none; }
-.upload-link input {
-  width: 100%;
-  padding: 13px 14px 13px 38px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  color: var(--text-primary);
-  font-size: 13px;
-  font-family: var(--font);
-  outline: none;
-  transition: border-color var(--transition);
-}
-.upload-link input:focus { border-color: var(--accent); }
-
-/* 支持平台 chips */
-.upload-platforms { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.upload-platforms-label { font-size: 12px; color: var(--text-muted); }
-.upload-platforms-chips { display: flex; gap: 8px; flex-wrap: wrap; }
-.platform-chip {
-  padding: 7px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-secondary);
+.upload-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
-  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
+.upload-tip svg { color: var(--text-secondary); flex-shrink: 0; }
 
 /* 下一步按钮居中 */
 .upload-next { align-self: center; margin-top: 6px; padding: 10px 30px; font-size: 13.5px; }
@@ -3320,6 +3292,12 @@ body {
   border-radius: 3px;
   flex-shrink: 0;
 }
+/* 说话者 chip：有参考图 = 头像 + 外号（引用图片）；无图 = 虚线 + 人形图标（按文字描述生成兜底） */
+.sb-tok-speaker--txt {
+  padding-left: 6px;
+  border-style: dashed;
+}
+.sb-tok-speaker--txt svg { flex-shrink: 0; opacity: 0.85; }
 /* 分镜关键帧 chip（中性色，区别于 @素材）；上传的替换参考图 chip 沿用 accent 基色 */
 /* 上下文补充：一体式输入框（附件在上、指令居中、右下角操作），紧凑、按钮低调 */
 .sb-kel {
