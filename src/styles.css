@@ -3258,10 +3258,10 @@ body {
 }
 .sb-video-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sb-video-dur { color: rgba(255, 255, 255, 0.6); font-family: 'SF Mono', 'Consolas', monospace; }
-/* 栏底提示语：补齐视频下方的空档，视觉高度与右列统一 */
+/* 提示语紧跟视频下方（固定小间距，不强求与右列底部对齐） */
 .sb-video-tip {
-  margin: auto 0 0;
-  padding-top: 14px;
+  margin: 0;
+  padding-top: 12px;
   display: flex; align-items: center; justify-content: center; gap: 5px;
   font-size: 11px; color: var(--text-muted);
   white-space: nowrap;
