@@ -936,6 +936,7 @@ function StepStoryboard({ onNext, onBack, onReupload, targetRegion = '巴西 (pt
                 </div>
               </div>
             </div>
+            <p className="sb-video-tip"><Eye size={12} /> 播放或拖动进度条，检查参考视频与关键帧是否对齐</p>
           </aside>
 
           <div className="sb-col">

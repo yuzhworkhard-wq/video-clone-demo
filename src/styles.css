@@ -3167,6 +3167,7 @@ body {
   flex-direction: column;
   gap: 20px;
   padding: 28px;
+  min-height: 627px;   /* 与第一步 upload-hero 外框等高；多出的高度由提示词框吃掉 */
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 18px;
@@ -3174,7 +3175,7 @@ body {
 
 /* ── 主排：左＝参考视频开放栏（无卡片，右缘竖线分隔），右＝上下文补充 / 编辑提示词上下排。
    左栏高度 = 头部 + 9:16 视频（不裁切），右列 stretch 到同高，提示词框吃掉剩余高度 ── */
-.sb-main { display: flex; gap: 28px; align-items: stretch; }
+.sb-main { display: flex; gap: 28px; align-items: stretch; flex: 1; }
 .sb-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
 
 .sb-video-pane {
@@ -3205,8 +3206,8 @@ body {
 
 .sb-video-body {
   position: relative;
-  /* basis:auto → 高度基准来自 9:16；右列更高时才拉伸（cover 轻微裁切兜底） */
-  flex: 1 1 auto; min-height: 0;
+  /* 锁 9:16 不拉伸不裁切，随头部整块居中 */
+  flex: none;
   aspect-ratio: 9 / 16;
   overflow: hidden;
   background: #000;
@@ -3257,6 +3258,14 @@ body {
 }
 .sb-video-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sb-video-dur { color: rgba(255, 255, 255, 0.6); font-family: 'SF Mono', 'Consolas', monospace; }
+/* 栏底提示语：补齐视频下方的空档，视觉高度与右列统一 */
+.sb-video-tip {
+  margin: auto 0 0;
+  padding-top: 14px;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  font-size: 11px; color: var(--text-muted);
+}
+.sb-video-tip svg { flex-shrink: 0; opacity: 0.8; }
 
 .sb-spec-val {
   display: flex; align-items: center; justify-content: space-between;
@@ -3756,6 +3765,7 @@ body {
 
 /* 窄屏：主排（参考视频 + 右列）上下堆叠，竖线分隔改横线，提示词框回到固定可读高度 */
 @media (max-width: 880px) {
+  .sb-layout { min-height: 0; }
   .sb-main { flex-direction: column; }
   .sb-video-pane {
     width: 100%;
