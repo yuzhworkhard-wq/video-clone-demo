@@ -110,7 +110,7 @@ export function CloneModal({ onClose }) {
               <>
                 {step === 0 && <StepUpload onNext={() => setStep(1)} videoFile={videoFile} onVideoFile={setVideoFile} videoUrl={videoUrl} onVideoUrl={setVideoUrl} />}
                 {step === 1 && <StepCrop videoUrl={videoUrl} onNext={startAnalyze} onBack={() => setStep(0)} />}
-                {step === 2 && <StepStoryboard onNext={onClose} onBack={() => setStep(1)} targetRegion={targetRegion} />}
+                {step === 2 && <StepStoryboard onNext={onClose} onBack={() => setStep(1)} onReupload={() => setStep(0)} targetRegion={targetRegion} videoUrl={videoUrl} />}
               </>
             )}
           </div>
@@ -540,10 +540,10 @@ function kfImgHtml(s, i, state) {
       + `<span class="sb-kfimg-load"><span class="sb-kfimg-spin"></span></span></span>`;
   }
   if (state === 'generating') {
-    return `<span class="sb-kfimg sb-kfimg--slot sb-kfimg--gen" contenteditable="false" title="镜头 ${i + 1} 关键帧生成中…">`
+    return `<span class="sb-kfimg sb-kfimg--slot sb-kfimg--gen" contenteditable="false" data-shot="${i}" title="镜头 ${i + 1} 关键帧生成中…">`
       + `${num}<span class="sb-kfimg-spin"></span></span>`;
   }
-  return `<span class="sb-kfimg sb-kfimg--slot" contenteditable="false" title="镜头 ${i + 1} · 点「应用并生成参考图」后在此生成">`
+  return `<span class="sb-kfimg sb-kfimg--slot" contenteditable="false" data-shot="${i}" title="镜头 ${i + 1} · 点「应用并生成参考图」后在此生成">`
     + `${num}${KF_SLOT_ICON}</span>`;
 }
 
@@ -593,9 +593,14 @@ function buildClonePromptHtml(shots, region, refImages = [], instruction = '', k
   return head.concat(body).join('\n');
 }
 
+function fmtSec(s) {
+  const n = Math.max(0, Math.floor(s || 0));
+  return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
+}
+
 // 大文本编辑器：非受控 contenteditable —— 挂载时写入一次 HTML，之后交给浏览器原生编辑，
 // React 不参与其子节点 diff（避免受控 contenteditable 的光标/清空问题）。@图片 chip 为原子块。
-const PromptEditor = React.memo(function PromptEditor({ html, onCount, onKfAction }) {
+const PromptEditor = React.memo(function PromptEditor({ html, onCount, onKfAction, editorRef, onScroll }) {
   const ref = useRef(null);
   useEffect(() => {
     const el = ref.current;
@@ -605,11 +610,12 @@ const PromptEditor = React.memo(function PromptEditor({ html, onCount, onKfActio
   const hitAct = (e) => e.target.closest?.('.sb-kfimg-act');
   return (
     <div
-      ref={ref}
+      ref={el => { ref.current = el; if (editorRef) editorRef.current = el; }}
       className="sb-prompt"
       contentEditable
       suppressContentEditableWarning
       spellCheck={false}
+      onScroll={onScroll}
       onInput={e => onCount(e.currentTarget.innerText.length)}
       onMouseDown={e => { if (hitAct(e)) e.preventDefault(); }}
       onClick={e => { const btn = hitAct(e); if (btn) { e.preventDefault(); onKfAction?.(btn); } }}
@@ -617,7 +623,7 @@ const PromptEditor = React.memo(function PromptEditor({ html, onCount, onKfActio
   );
 });
 
-function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
+function StepStoryboard({ onNext, onBack, onReupload, targetRegion = '巴西 (pt-BR)', videoUrl = null }) {
   const langLabel = parseLangLabel(targetRegion);
   const initShots = [
     { id: 1, time: '0:00-0:02', startMs: 0, endMs: 2000, kfMs: 0, angle: '中景 / 正面平角', content: '长发小妹站在街边ATM旁，面对镜头开口说话，身后有自然的街道人流', line: 'Voce sabia que pode ganhar...', zh: '你知道你可以赚钱吗...', type: 'frozen', keyframe: true, refVersion: 1, speaker: 'mei', speakerNote: '出镜口播',
@@ -752,6 +758,82 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
   // 整段可直接编辑的提示词（挂载时生成 HTML，之后用户看着改；@图片 chip 为原子块）
   const [promptHtml, setPromptHtml] = useState(() => buildClonePromptHtml(initShots, targetRegion));
   const [charCount, setCharCount] = useState(0);
+
+  // ── 视频 ⇄ 提示词双向联动：镜头时间轴（startMs/endMs）对 .sb-kfimg[data-shot] 锚点 ──
+  // 拖进度条/播放 → 提示词滚到当前镜头并高亮；滚动提示词 → 视频 seek 到该镜头首帧。
+  // syncSrcRef 记录最近一次驱动方，短窗口内忽略对向回声，防止两边互相抢滚动。
+  const videoRef = useRef(null);
+  const editorRef = useRef(null);
+  const [playing, setPlaying] = useState(false);
+  const [vt, setVt] = useState(0);
+  const [vdur, setVdur] = useState(0);
+  const curShotRef = useRef(-1);
+  const syncSrcRef = useRef({ src: null, until: 0 });
+  const SYNC_ECHO_MS = 700;
+  // 分镜表按 14s 源片写死；实际视频时长不同（尤其 demo 测试片）时按比例映射，保证 8 镜全程可达
+  const shotScaleRef = useRef(1);
+  const SHOT_TOTAL_MS = initShots[initShots.length - 1].endMs;
+
+  function shotAt(sec) {
+    const ms = (sec * 1000) / shotScaleRef.current;
+    for (let i = initShots.length - 1; i >= 0; i--) if (ms >= initShots[i].startMs) return i;
+    return 0;
+  }
+  function highlightShot(i, scroll) {
+    const ed = editorRef.current;
+    if (!ed) return;
+    ed.querySelectorAll('.sb-kfimg--cur').forEach(n => n.classList.remove('sb-kfimg--cur'));
+    const a = ed.querySelector(`.sb-kfimg[data-shot="${i}"]`);
+    if (!a) return;
+    a.classList.add('sb-kfimg--cur');
+    if (scroll) {
+      syncSrcRef.current = { src: 'video', until: Date.now() + SYNC_ECHO_MS };
+      const top = a.getBoundingClientRect().top - ed.getBoundingClientRect().top + ed.scrollTop;
+      ed.scrollTo({ top: Math.max(0, top - 14), behavior: 'smooth' });
+    }
+  }
+  function onVideoTime() {
+    const v = videoRef.current;
+    if (!v) return;
+    setVt(v.currentTime);
+    const i = shotAt(v.currentTime);
+    if (i === curShotRef.current) return;
+    curShotRef.current = i;
+    const s = syncSrcRef.current;
+    highlightShot(i, !(s.src === 'editor' && Date.now() < s.until));
+  }
+  function onSeek(e) {
+    const v = videoRef.current;
+    if (!v) return;
+    v.currentTime = Number(e.target.value);
+    onVideoTime();
+  }
+  function togglePlay() {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) {
+      if (v.ended || v.currentTime >= (v.duration || 0) - 0.05) v.currentTime = 0;   // 播完重看从头起
+      v.play();
+    } else v.pause();
+  }
+  const onEditorScroll = React.useCallback(() => {
+    const s = syncSrcRef.current;
+    if (s.src === 'video' && Date.now() < s.until) return;   // 程序滚动的回声
+    const ed = editorRef.current, v = videoRef.current;
+    if (!ed || !v) return;
+    const edTop = ed.getBoundingClientRect().top;
+    let idx = 0;   // 视口上沿基准线以上最近的镜头 = 当前镜头
+    ed.querySelectorAll('.sb-kfimg[data-shot]').forEach(n => {
+      if (n.getBoundingClientRect().top - edTop <= 90) idx = Number(n.dataset.shot);
+    });
+    if (idx === curShotRef.current) return;
+    curShotRef.current = idx;
+    syncSrcRef.current = { src: 'editor', until: Date.now() + SYNC_ECHO_MS };
+    if (!v.paused) v.pause();
+    v.currentTime = (initShots[idx].startMs / 1000) * shotScaleRef.current + 0.02;
+    setVt(v.currentTime);
+    highlightShot(idx, false);
+  }, []);   // initShots 组件内常量，refs 稳定
   // 关键帧 hover 操作：提示词是非受控 contenteditable，React 不管其子树，改图直接操作该原子块的 DOM
   function handleKfAction(btn) {
     const span = btn.closest('.sb-kfimg');
@@ -807,78 +889,116 @@ function StepStoryboard({ onNext, onBack, targetRegion = '巴西 (pt-BR)' }) {
   return (
     <div className="step-content sb-step">
       <div className="sb-layout">
-        {/* 顶排：参考视频（紧凑卡片，与右侧输入框同高）+ 上下文补充 */}
-        <div className="sb-top">
-          <section className="sb-block sb-top-video">
-            <div className="sb-block-head">
-              <span className="sb-block-title">参考视频</span>
+        {/* 主排：左＝参考视频（开放栏，竖线分隔），右＝上下文补充 / 编辑提示词上下排 */}
+        <div className="sb-main">
+          <aside className="sb-video-pane">
+            <div className="sb-video-pane-head">
+              <span className="sb-video-pane-title">参考视频</span>
+              <button className="sb-video-reup" onClick={onReupload}>
+                <RotateCcw size={13} /> 重新上传
+              </button>
             </div>
-            <div className="sb-video-mini">
-              <img src="frames/frame_01.jpg" alt="" className="sb-video-mini-el" />
-              <button className="sb-video-mini-play" title="预览源视频"><Play size={14} /></button>
-              <div className="sb-video-mini-info">
-                <span className="sb-video-mini-name">source.mp4</span>
-                <span className="sb-video-mini-dur">0:14</span>
+            <div className="sb-video-body">
+              <video
+                ref={videoRef}
+                src={videoUrl || 'test-clip.mp4'}
+                className="sb-video-el"
+                playsInline
+                preload="metadata"
+                poster="frames/frame_01.jpg"
+                onClick={togglePlay}
+                onTimeUpdate={onVideoTime}
+                onLoadedMetadata={e => {
+                  const d = e.currentTarget.duration || 0;
+                  setVdur(d);
+                  shotScaleRef.current = d > 0 ? (d * 1000) / SHOT_TOTAL_MS : 1;
+                }}
+                onPlay={() => setPlaying(true)}
+                onPause={() => setPlaying(false)}
+                onEnded={() => setPlaying(false)}
+              />
+              {!playing && (
+                <button className="sb-video-play" onClick={togglePlay} title="播放"><Play size={16} /></button>
+              )}
+              <div className="sb-video-ctrl">
+                <input
+                  type="range"
+                  className="sb-video-seek"
+                  min={0} max={vdur || 0.1} step={0.05}
+                  value={Math.min(vt, vdur || 0)}
+                  onInput={onSeek}
+                  aria-label="播放进度"
+                  style={{ '--seek-pct': `${vdur ? (Math.min(vt, vdur) / vdur) * 100 : 0}%` }}
+                />
+                <div className="sb-video-meta">
+                  <span className="sb-video-name">source.mp4</span>
+                  <span className="sb-video-dur">{fmtSec(vt)} / {fmtSec(vdur)}</span>
+                </div>
               </div>
             </div>
-          </section>
+          </aside>
 
-          <section className="sb-block sb-top-kel">
-            <div className="sb-block-head">
-              <span className="sb-block-title">上下文补充</span>
-              <span className="sb-block-meta">选填 · 图片织入提示词并生成分镜参考图</span>
-            </div>
-            {/* 一体式输入框：附件在上、指令居中、右下角操作 */}
-            <div className="sb-kel">
-              <div className="sb-kel-imgs">
-                {refImages.map((img, i) => (
-                  <div key={img.id} className="sb-kel-thumb">
-                    <img src={img.url} alt={`参考图 ${i + 1}`} />
-                    <button className="sb-kel-del" onClick={() => removeRefImage(img.id)} aria-label={`移除参考图 ${i + 1}`}>
-                      <X size={12} />
+          <div className="sb-col">
+            <section className="sb-block">
+              <div className="sb-block-head">
+                <span className="sb-block-title">上下文补充</span>
+                <span className="sb-block-meta">选填 · 图片织入提示词并生成分镜参考图</span>
+              </div>
+              {/* 一体式输入框：附件在左、指令居右（含右下角操作） */}
+              <div className="sb-kel">
+                <div className="sb-kel-imgs">
+                  {refImages.map((img, i) => (
+                    <div key={img.id} className="sb-kel-thumb">
+                      <img src={img.url} alt={`参考图 ${i + 1}`} />
+                      <button className="sb-kel-del" onClick={() => removeRefImage(img.id)} aria-label={`移除参考图 ${i + 1}`}>
+                        <X size={12} />
+                      </button>
+                      <span className="sb-kel-idx">图 {i + 1}</span>
+                    </div>
+                  ))}
+                  {refImages.length < 3 && (
+                    <button className="sb-kel-add" onClick={() => setUploadOpen(true)}>
+                      <ImagePlus size={20} strokeWidth={1.5} />
+                      <span>上传</span>
                     </button>
-                    <span className="sb-kel-idx">图 {i + 1}</span>
+                  )}
+                  <input ref={refInputRef} type="file" accept="image/*" multiple hidden
+                    onChange={e => { addLocalImages(e.target.files); e.target.value = ''; }} />
+                </div>
+                <div className="sb-kel-main">
+                  <textarea className="sb-kel-input" rows={2} value={instr}
+                    onChange={e => { setInstr(e.target.value); invalidate(); }}
+                    placeholder="补充上下文：这些图怎么用（例：@图1 换成新角色贯穿全片，@图2 作为手机里展示的产品）。留空则按脚本自动套用。" />
+                  <div className="sb-kel-foot">
+                    <span className="sb-kel-hint">
+                      {refImages.length ? `已选 ${refImages.length} / 3 张` : '上传 1–3 张人物或产品图（选填）'}
+                    </span>
+                    <button className="sb-kel-apply" disabled={!refImages.length || genState === 'generating'} onClick={applyAndGenerate}>
+                      {genState === 'generating'
+                        ? <><Loader2 size={14} className="spinner" /> 生成中…</>
+                        : <><Sparkles size={14} /> 应用并生成参考图</>}
+                    </button>
                   </div>
-                ))}
-                {refImages.length < 3 && (
-                  <button className="sb-kel-add" onClick={() => setUploadOpen(true)}>
-                    <ImagePlus size={20} strokeWidth={1.5} />
-                    <span>上传</span>
-                  </button>
-                )}
-                <input ref={refInputRef} type="file" accept="image/*" multiple hidden
-                  onChange={e => { addLocalImages(e.target.files); e.target.value = ''; }} />
+                </div>
               </div>
-              <textarea className="sb-kel-input" rows={2} value={instr}
-                onChange={e => { setInstr(e.target.value); invalidate(); }}
-                placeholder="补充上下文：这些图怎么用（例：@图1 换成新角色贯穿全片，@图2 作为手机里展示的产品）。留空则按脚本自动套用。" />
-              <div className="sb-kel-foot">
-                <span className="sb-kel-hint">
-                  {refImages.length ? `已选 ${refImages.length} / 3 张` : '上传 1–3 张人物或产品图（选填）'}
-                </span>
-                <button className="sb-kel-apply" disabled={!refImages.length || genState === 'generating'} onClick={applyAndGenerate}>
-                  {genState === 'generating'
-                    ? <><Loader2 size={14} className="spinner" /> 生成中…</>
-                    : <><Sparkles size={14} /> 应用并生成参考图</>}
-                </button>
-              </div>
-            </div>
-          </section>
-        </div>
+            </section>
 
-        {/* 编辑提示词：全宽，分镜关键帧图逐镜嵌在对应脚本下方 */}
-        <section className="sb-block">
-          <div className="sb-block-head">
-            <span className="sb-block-title">编辑提示词</span>
-            <span className="sb-block-meta">
-              {genState === 'generating' && <><Loader2 size={11} className="spinner" /> 分镜关键帧生成中 · </>}
-              {genState === 'done' && `${initShots.length} 镜关键帧已按参考图更新 · `}
-              {charCount} 字 · 直接改文字即可
-            </span>
+            {/* 编辑提示词：填满右列剩余高度，分镜关键帧图逐镜嵌在对应脚本下方 */}
+            <section className="sb-block sb-block--prompt">
+              <div className="sb-block-head">
+                <span className="sb-block-title">编辑提示词</span>
+                <span className="sb-block-meta">
+                  {genState === 'generating' && <><Loader2 size={11} className="spinner" /> 分镜关键帧生成中 · </>}
+                  {genState === 'done' && `${initShots.length} 镜关键帧已按参考图更新 · `}
+                  {charCount} 字 · 直接改文字即可
+                </span>
+              </div>
+              <PromptEditor html={promptHtml} onCount={setCharCount} onKfAction={handleKfAction}
+                editorRef={editorRef} onScroll={onEditorScroll} />
+              <input ref={kfFileRef} type="file" accept="image/*" hidden onChange={onKfFile} />
+            </section>
           </div>
-          <PromptEditor html={promptHtml} onCount={setCharCount} onKfAction={handleKfAction} />
-          <input ref={kfFileRef} type="file" accept="image/*" hidden onChange={onKfFile} />
-        </section>
+        </div>
       </div>
 
       <div className="step-actions">

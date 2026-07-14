@@ -414,7 +414,7 @@ body {
 
 .clone-page-inner {
   width: 100%;
-  max-width: 1160px;
+  max-width: 1400px;
   margin: 0 auto;
   container-type: inline-size;
 }
@@ -3166,46 +3166,97 @@ body {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding: 22px;
+  padding: 28px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 18px;
 }
 
-/* ── 顶排：参考视频（原效果等比缩小：信息叠图内）+ 上下文补充，同高并排 ── */
-.sb-top { display: flex; gap: 22px; align-items: flex-start; }
-.sb-top-video { flex-shrink: 0; }
-.sb-top-kel { flex: 1; min-width: 0; }
+/* ── 主排：左＝参考视频开放栏（无卡片，右缘竖线分隔），右＝上下文补充 / 编辑提示词上下排。
+   左栏高度 = 头部 + 9:16 视频（不裁切），右列 stretch 到同高，提示词框吃掉剩余高度 ── */
+.sb-main { display: flex; gap: 28px; align-items: stretch; }
+.sb-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
 
-.sb-video-mini {
+.sb-video-pane {
+  flex-shrink: 0;
+  width: 292px;
+  display: flex; flex-direction: column;
+  /* 负 margin + 等量 padding：让右缘竖线穿过 sb-layout 的上下 padding，与外框相连 */
+  margin: -28px 0;
+  padding: 28px 28px 28px 0;
+  border-right: 1px solid var(--border);
+}
+.sb-video-pane-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 2px 0 22px;
+}
+.sb-video-pane-title { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+.sb-video-reup {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 13px;
+  font-family: var(--font); font-size: 12px; font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
+  border: 1px solid var(--border-light); border-radius: 10px;
+  cursor: pointer; transition: all var(--transition);
+}
+.sb-video-reup:hover { color: var(--text-primary); border-color: var(--accent); background: var(--accent-subtle); }
+.sb-video-reup svg { flex-shrink: 0; }
+
+.sb-video-body {
   position: relative;
-  width: 120px;
+  /* basis:auto → 高度基准来自 9:16；右列更高时才拉伸（cover 轻微裁切兜底） */
+  flex: 1 1 auto; min-height: 0;
   aspect-ratio: 9 / 16;
   overflow: hidden;
   background: #000;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 14px;
 }
-.sb-video-mini-el { width: 100%; height: 100%; object-fit: cover; display: block; }
-.sb-video-mini-play {
+.sb-video-el { width: 100%; height: 100%; object-fit: cover; display: block; cursor: pointer; }
+.sb-video-play {
   position: absolute; inset: 0; margin: auto;
-  width: 32px; height: 32px;
+  width: 40px; height: 40px;
   display: flex; align-items: center; justify-content: center;
   color: #fff; background: rgba(0, 0, 0, 0.42);
   border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 50%;
   cursor: pointer; transition: background var(--transition);
 }
-.sb-video-mini-play:hover { background: rgba(0, 0, 0, 0.72); }
-.sb-video-mini-info {
+.sb-video-play:hover { background: rgba(0, 0, 0, 0.72); }
+/* 底部播放控制：细进度条（拖动 seek，右侧提示词跟随滚到对应镜头）+ 文件名/时间 */
+.sb-video-ctrl {
   position: absolute; left: 0; right: 0; bottom: 0;
-  display: flex; align-items: center; gap: 4px;
-  padding: 14px 8px 6px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
-  font-size: 10.5px; color: rgba(255, 255, 255, 0.9);
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 26px 10px 8px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.88));
 }
-.sb-video-mini-info svg { flex-shrink: 0; opacity: 0.85; }
-.sb-video-mini-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sb-video-mini-dur { color: rgba(255, 255, 255, 0.6); font-family: 'SF Mono', 'Consolas', monospace; }
+.sb-video-seek {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 3px; margin: 0;
+  border-radius: 2px;
+  background: linear-gradient(to right,
+    var(--accent) var(--seek-pct, 0%),
+    rgba(255, 255, 255, 0.24) var(--seek-pct, 0%));
+  outline: none; cursor: pointer;
+}
+.sb-video-seek::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 11px; height: 11px;
+  background: #fff; border: none; border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.sb-video-seek::-moz-range-thumb {
+  width: 11px; height: 11px;
+  background: #fff; border: none; border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+.sb-video-meta {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  font-size: 11px; color: rgba(255, 255, 255, 0.88);
+}
+.sb-video-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-video-dur { color: rgba(255, 255, 255, 0.6); font-family: 'SF Mono', 'Consolas', monospace; }
 
 .sb-spec-val {
   display: flex; align-items: center; justify-content: space-between;
@@ -3249,10 +3300,15 @@ body {
   border: 1.5px solid var(--bg-card); border-radius: 50%;
 }
 
-/* 编辑提示词：一大段可直接看着改的大文本框（contenteditable，内嵌 @图片 小图 chip） */
+/* 编辑提示词：一大段可直接看着改的大文本框（contenteditable，内嵌 @图片 小图 chip）。
+   高度不再写死：占满右列剩余高度（由左侧参考视频卡的高度决定） */
+.sb-block--prompt { flex: 1; min-height: 0; }
 .sb-prompt {
   width: 100%;
-  height: 540px;
+  /* contain:size 让长文不参与行高计算（行高由左侧 9:16 视频卡决定），flex 再填满剩余空间 */
+  flex: 1;
+  contain: size;
+  min-height: 240px;
   padding: 18px 20px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -3303,19 +3359,21 @@ body {
 }
 .sb-tok-speaker--txt svg { flex-shrink: 0; opacity: 0.85; }
 /* 分镜关键帧 chip（中性色，区别于 @素材）；上传的替换参考图 chip 沿用 accent 基色 */
-/* 上下文补充：一体式输入框（附件在上、指令居中、右下角操作），紧凑、按钮低调 */
+/* 上下文补充：一体式输入框（附件在左、指令居右、右下角操作），左右排压缩高度、按钮低调 */
 .sb-kel {
-  display: flex; flex-direction: column; gap: 9px;
-  padding: 11px;
+  display: flex; gap: 12px; align-items: stretch;
+  padding: 14px;
   background: var(--bg-elevated); border: 1px solid var(--border);
   border-radius: 12px;
   transition: border-color var(--transition);
 }
 .sb-kel:focus-within { border-color: var(--border-light); }
-.sb-kel-imgs { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sb-kel-imgs { display: flex; gap: 8px; align-items: flex-start; flex-shrink: 0; }
+.sb-kel-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.sb-kel-main .sb-kel-input { flex: 1; }
 .sb-kel-thumb {
   position: relative;
-  width: 80px; height: 106px;
+  width: 66px; height: 88px;
   overflow: hidden;
   background: var(--bg-card); border: 1px solid var(--border);
   border-radius: 9px;
@@ -3338,7 +3396,7 @@ body {
 }
 .sb-kel-add {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  width: 80px; height: 106px;
+  width: 66px; height: 88px;
   color: var(--text-muted); font-size: 11px;
   background: var(--bg-card); border: 1px dashed var(--border-light);
   border-radius: 9px; cursor: pointer;
@@ -3551,6 +3609,8 @@ body {
 }
 .sb-kfimg--slot .sb-kfimg-num { background: rgba(0, 0, 0, 0.4); color: var(--text-secondary); }
 .sb-kfimg--gen { border-color: rgba(97, 97, 255, 0.45); }
+/* 播放/拖动进度条时的当前镜头：关键帧描边点亮（随视频时间轴逐镜移动） */
+.sb-kfimg--cur { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(97, 97, 255, 0.3); }
 /* done 态 hover：改完该镜脚本后可原位重新生成 / 本地上传替换 */
 .sb-kfimg-acts {
   position: absolute; inset: 0;
@@ -3694,10 +3754,19 @@ body {
 .sb-edit-label svg { color: var(--text-muted); }
 .sb-edit-close { align-self: flex-end; }
 
-/* 窄屏：顶排（参考视频 + 上下文补充）上下堆叠 */
+/* 窄屏：主排（参考视频 + 右列）上下堆叠，竖线分隔改横线，提示词框回到固定可读高度 */
 @media (max-width: 880px) {
-  .sb-top { flex-direction: column; }
-  .sb-top-video { width: 100%; }
+  .sb-main { flex-direction: column; }
+  .sb-video-pane {
+    width: 100%;
+    margin: 0;
+    padding: 0 0 20px; border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .sb-video-body { flex: none; aspect-ratio: auto; height: 300px; }
+  .sb-block--prompt .sb-prompt { min-height: 420px; }
+  .sb-kel { flex-direction: column; }
+  .sb-kel-imgs { flex-wrap: wrap; }
 }
 
 /* ════ 全局自定义下拉（可展开菜单 + 选中高亮），对齐参考图 ════ */
