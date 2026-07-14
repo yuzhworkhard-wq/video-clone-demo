@@ -600,6 +600,8 @@ body {
   background: var(--bg-surface);
   overflow: hidden;
 }
+/* 已选择态整面板可点：点击即重新选择视频（垃圾桶仍为彻底移除） */
+.upload-panel--done { cursor: pointer; }
 
 .upload-panel-bg {
   position: absolute;
@@ -3261,7 +3263,7 @@ body {
 /* 提示语紧跟视频下方（固定小间距，不强求与右列底部对齐） */
 .sb-video-tip {
   margin: 0;
-  padding-top: 12px;
+  padding-top: 18px;
   display: flex; align-items: center; justify-content: center; gap: 5px;
   font-size: 11px; color: var(--text-muted);
   white-space: nowrap;

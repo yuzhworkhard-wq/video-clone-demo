@@ -283,6 +283,7 @@ function StepUpload({ onNext, videoFile, onVideoFile, videoUrl, onVideoUrl }) {
 
   const handleFile = (f) => {
     if (!f) return;
+    if (videoUrl) URL.revokeObjectURL(videoUrl);   // 重新选择时释放旧视频
     setFile(f);
     setVideoUrl(URL.createObjectURL(f));
     setPhase('uploading');
@@ -330,6 +331,9 @@ function StepUpload({ onNext, videoFile, onVideoFile, videoUrl, onVideoUrl }) {
             </p>
           </div>
 
+          <input ref={fileRef} type="file" accept="video/*" hidden
+            onChange={e => { handleFile(e.target.files[0]); e.target.value = ''; }} />
+
           {phase === 'empty' && (
             <div
               className="upload-card"
@@ -337,8 +341,6 @@ function StepUpload({ onNext, videoFile, onVideoFile, videoUrl, onVideoUrl }) {
               onDrop={handleFileDrop}
               onClick={() => fileRef.current?.click()}
             >
-              <input ref={fileRef} type="file" accept="video/*" hidden
-                onChange={e => handleFile(e.target.files[0])} />
               <div className="upload-card-icon"><Video size={22} strokeWidth={1.5} /></div>
               <span className="upload-card-title">上传参考视频</span>
               <span className="upload-card-hint">MP4 / MOV · 500MB 以内</span>
@@ -363,7 +365,11 @@ function StepUpload({ onNext, videoFile, onVideoFile, videoUrl, onVideoUrl }) {
           )}
 
           {phase === 'done' && (
-            <div className="upload-panel upload-panel--done">
+            <div className="upload-panel upload-panel--done" title="点击重新选择视频"
+              onClick={() => fileRef.current?.click()}
+              onDragOver={e => e.preventDefault()}
+              onDrop={handleFileDrop}
+            >
               <video className="upload-panel-bg" src={videoUrl} muted playsInline
                 preload="auto" onLoadedData={showFirstFrame} />
               <div className="upload-panel-media">
@@ -374,7 +380,8 @@ function StepUpload({ onNext, videoFile, onVideoFile, videoUrl, onVideoUrl }) {
                   <span className="upload-selected-pill">已选择</span>
                 </div>
               </div>
-              <button className="upload-panel-delete" onClick={removeFile} title="移除视频">
+              <button className="upload-panel-delete" title="移除视频"
+                onClick={e => { e.stopPropagation(); removeFile(); }}>
                 <Trash2 size={16} />
               </button>
             </div>
