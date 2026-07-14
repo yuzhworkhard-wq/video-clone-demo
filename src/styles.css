@@ -3264,6 +3264,7 @@ body {
   padding-top: 14px;
   display: flex; align-items: center; justify-content: center; gap: 5px;
   font-size: 11px; color: var(--text-muted);
+  white-space: nowrap;
 }
 .sb-video-tip svg { flex-shrink: 0; opacity: 0.8; }
 
